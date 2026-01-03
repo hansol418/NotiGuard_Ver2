@@ -119,7 +119,7 @@ if "chat_messages" not in st.session_state:
 # -------------------------
 # 채팅 메시지 표시
 # -------------------------
-for msg in st.session_state.chat_messages:
+for msg_idx, msg in enumerate(st.session_state.chat_messages):
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
@@ -134,7 +134,7 @@ for msg in st.session_state.chat_messages:
                 with cols[i]:
                     if st.button(
                         f"공지 #{ref_id} 보기",
-                        key=f"notice_{ref_id}_{msg.get('timestamp', i)}",
+                        key=f"notice_history_{msg_idx}_{i}_{ref_id}",
                         use_container_width=True
                     ):
                         st.session_state.selected_post_id = ref_id
