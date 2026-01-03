@@ -27,8 +27,10 @@ def get_conn():
     - 로컬 개발: SQLite (groupware.db)
     - Railway 배포: PostgreSQL (DATABASE_URL)
     """
+    conn = None
+
     if USE_POSTGRES:
-        # PostgreSQL 연결 (Railway)
+        # PostgreSQL 연결 시도 (Railway)
         try:
             url = urlparse.urlparse(DATABASE_URL)
             conn = psycopg2.connect(
@@ -39,40 +41,25 @@ def get_conn():
                 port=url.port,
                 cursor_factory=RealDictCursor  # Dict-like cursor
             )
-            try:
-                yield conn
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-            finally:
-                conn.close()
         except Exception as e:
             print(f"PostgreSQL 연결 실패: {e}")
             print("SQLite로 폴백합니다...")
-            # Fallback to SQLite
-            conn = sqlite3.connect(DB_PATH)
-            conn.row_factory = sqlite3.Row
-            try:
-                yield conn
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-            finally:
-                conn.close()
-    else:
-        # SQLite 연결 (로컬)
+            conn = None
+
+    # PostgreSQL 연결 실패 시 SQLite 사용
+    if conn is None:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+
+    # 공통 컨텍스트 매니저 로직
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db():
