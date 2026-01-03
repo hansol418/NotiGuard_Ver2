@@ -16,7 +16,7 @@ load_dotenv()
 R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
 R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
 R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
-R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "hyosung-groupware")
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "notiguard-files")
 R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "")  # 커스텀 도메인 또는 R2.dev URL
 
 # Railway 환경 감지 (DATABASE_URL이 있으면 Railway 환경)
