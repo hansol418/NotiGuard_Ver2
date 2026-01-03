@@ -17,13 +17,13 @@ DATABASE_URL=postgresql://...
 ### 2. AI 챗봇 (POTENS API)
 ```bash
 POTENS_API_KEY=Q1QJ6jIOTp0369I9PXCFa3GxMyzY4hHh
-POTENS_API_URL=https://ai.potens.ai/api/chat
+POTENS_API_URL=https://api.potens.ai/v1/chat/completions
 RESPONSE_TIMEOUT=30
 ```
 - **설명**: POTENS AI 챗봇 API 인증 및 설정
 - **필수**: ✅ Yes (챗봇 기능 사용 시)
 - **기본값**:
-  - `POTENS_API_URL`: https://ai.potens.ai/api/chat
+  - `POTENS_API_URL`: https://api.potens.ai/v1/chat/completions
   - `RESPONSE_TIMEOUT`: 30
 
 ---
@@ -55,7 +55,7 @@ railway link
 
 # AI 챗봇
 railway variables set POTENS_API_KEY=Q1QJ6jIOTp0369I9PXCFa3GxMyzY4hHh
-railway variables set POTENS_API_URL=https://ai.potens.ai/api/chat
+railway variables set POTENS_API_URL=https://api.potens.ai/v1/chat/completions
 railway variables set RESPONSE_TIMEOUT=30
 
 # Cloudflare R2
@@ -97,7 +97,7 @@ railway up
    값: Q1QJ6jIOTp0369I9PXCFa3GxMyzY4hHh
 
    변수명: POTENS_API_URL
-   값: https://ai.potens.ai/api/chat
+   값: https://api.potens.ai/v1/chat/completions
 
    변수명: RESPONSE_TIMEOUT
    값: 30
