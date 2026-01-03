@@ -37,6 +37,12 @@ class PostgresConnectionWrapper:
             self._cursor.execute(sql)
         return self._cursor
 
+    def cursor(self, cursor_factory=None):
+        """Create a new cursor (for direct cursor usage)"""
+        if cursor_factory:
+            return self._conn.cursor(cursor_factory=cursor_factory)
+        return self._conn.cursor(cursor_factory=RealDictCursor)
+
     def commit(self):
         return self._conn.commit()
 
