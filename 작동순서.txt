@@ -1,0 +1,4 @@
+1. visualstudio 코드를 킨 뒤 해당 폴더 실행
+2. pyenv activate comento 명령을 통해 가상환경 진입
+3. pip install -r requirements.txt로 라이브러리 설치
+4. streamlit run app.py로 실행

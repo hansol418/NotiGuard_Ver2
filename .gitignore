@@ -1,0 +1,43 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Documentation (로컬 개발 문서)
+docs/
+
+# Database
+*.db
+*.db-journal
+groupware.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Uploads (로컬 개발용)
+uploads/
+!uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Railway
+.railway/

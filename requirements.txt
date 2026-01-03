@@ -1,0 +1,6 @@
+streamlit
+streamlit-autorefresh
+requests
+python-dotenv
+boto3>=1.28.0  # Cloudflare R2 (S3 호환)
+psycopg2-binary>=2.9.0  # PostgreSQL support for Railway

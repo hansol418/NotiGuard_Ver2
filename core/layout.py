@@ -1,0 +1,386 @@
+import base64
+import mimetypes
+from pathlib import Path
+from typing import Optional, List, Tuple
+import streamlit as st
+
+
+PORTAL_PRIMARY = "#139fb0"
+PORTAL_BG = "#f5f7fb"
+CARD_BORDER = "rgba(17,24,39,0.10)"
+
+def apply_portal_theme(*, hide_pages_sidebar_nav: bool, hide_sidebar: bool, active_menu: Optional[str] = None):
+    active_menu = active_menu or ""
+    st.markdown(
+        f"""
+        <style>
+        body {{ background: {PORTAL_BG}; }}
+        .block-container {{
+            padding-top: 0.8rem;
+            padding-bottom: 1.2rem;
+            max-width: 1600px;
+        }}
+
+        {"div[data-testid='stSidebarNav']{display:none !important;}" if hide_pages_sidebar_nav else ""}
+        {"section[data-testid='stSidebar']{display:none !important;}" if hide_sidebar else ""}
+
+        section[data-testid="stSidebar"] > div {{
+            background: {PORTAL_PRIMARY};
+            color: #fff;
+            padding-top: 18px;
+        }}
+
+        section[data-testid="stSidebar"] .stButton button {{
+            width: 100%;
+            border-radius: 0px;
+            border: none;
+            padding: 10px 12px;
+            font-weight: 900;
+            margin-bottom: 8px;
+            background: transparent;
+            color: #fff;
+            height: 44px;
+            box-shadow: none;
+
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            text-align: left !important;
+            padding-left: 16px !important;
+        }}
+
+        section[data-testid="stSidebar"] .stButton button > div {{
+            width: 100% !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+        }}
+
+        section[data-testid="stSidebar"] .stButton button:hover {{
+            background: rgba(255,255,255,0.10);
+            border-radius: 12px;
+        }}
+
+        section[data-testid="stSidebar"] .stButton button.hs-active {{
+            background: rgba(255,255,255,0.18) !important;
+            border-radius: 12px !important;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.30);
+        }}
+
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
+            border-color: {CARD_BORDER};
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 10px 26px rgba(0,0,0,0.06);
+        }}
+
+        .stButton button[kind="primary"] {{
+            background: {PORTAL_PRIMARY};
+            border: 1px solid {PORTAL_PRIMARY};
+            font-weight: 900;
+            border-radius: 12px;
+            height: 42px;
+        }}
+
+        .hs-card {{
+            min-height: 230px;
+            height: 230px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }}
+        </style>
+
+        <script>
+        (function () {{
+          const active = {active_menu!r};
+          const doc = window.parent.document;
+          const sidebar = doc.querySelector('section[data-testid="stSidebar"]');
+          if (!sidebar) return;
+
+          const btns = sidebar.querySelectorAll('button');
+          btns.forEach((b) => {{
+            const t = (b.innerText || '').trim();
+            if (!t) return;
+            if (t === active) b.classList.add('hs-active');
+            else b.classList.remove('hs-active');
+          }});
+        }})();
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
+PORTAL_PRIMARY = "#139fb0"
+PORTAL_BG = "#f5f7fb"
+CARD_BORDER = "rgba(17,24,39,0.10)"
+
+def render_floating_widget(*, img_path: str, width_px: int = 200, bottom_px: int = 20, right_px: int = 20):
+    """
+    우측 하단 플로팅 '이미지 위젯' - 클릭 시 챗봇 모달 열기
+    - width_px: 이미지 너비 기준(비율 유지)
+    """
+    import streamlit.components.v1 as components
+
+    p = Path(img_path)
+    if not p.exists():
+        st.warning(f"Floating widget image not found: {p.resolve()}")
+        return
+
+    mime, _ = mimetypes.guess_type(str(p))
+    mime = mime or "image/png"
+
+    b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+    data_url = f"data:{mime};base64,{b64}"
+
+    # 버튼 생성
+    if st.button("open", key="floating_chatbot_trigger"):
+        st.session_state._chatbot_modal_open = True
+        st.rerun()
+
+    # 플로팅 위젯 생성 + 버튼 숨김 처리
+    components.html(
+        f"""
+        <script>
+        (function() {{
+            const doc = window.parent.document;
+
+            // 기존 위젯 제거
+            const old = doc.getElementById('floating-chatbot-widget');
+            if (old) old.remove();
+
+            // 플로팅 위젯 생성
+            const widget = doc.createElement('div');
+            widget.id = 'floating-chatbot-widget';
+            widget.style.cssText = `
+                position: fixed;
+                right: {right_px}px;
+                bottom: {bottom_px}px;
+                z-index: 999999;
+                width: {width_px}px;
+                height: {width_px}px;
+                cursor: pointer;
+                transition: transform 0.12s ease, filter 0.12s ease;
+                background-image: url('{data_url}');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+            `;
+
+            widget.onmouseenter = () => {{
+                widget.style.transform = 'translateY(-2px)';
+                widget.style.filter = 'drop-shadow(0 22px 42px rgba(0,0,0,0.34))';
+            }};
+            widget.onmouseleave = () => {{
+                widget.style.transform = '';
+                widget.style.filter = '';
+            }};
+            widget.onclick = () => {{
+                const buttons = doc.querySelectorAll('button');
+                for (let btn of buttons) {{
+                    if ((btn.textContent || '').trim() === 'open') {{
+                        btn.click();
+                        break;
+                    }}
+                }}
+            }};
+
+            doc.body.appendChild(widget);
+
+            // "open" 버튼 숨기기 - 여러 번 시도
+            function hideOpenButton() {{
+                const buttons = doc.querySelectorAll('button');
+                buttons.forEach(btn => {{
+                    if ((btn.textContent || '').trim() === 'open') {{
+                        // 버튼 자체 숨김
+                        btn.style.display = 'none';
+                        btn.style.visibility = 'hidden';
+                        btn.style.opacity = '0';
+                        btn.style.position = 'absolute';
+                        btn.style.width = '0';
+                        btn.style.height = '0';
+
+                        // 부모 요소도 숨김
+                        if (btn.parentElement) {{
+                            btn.parentElement.style.display = 'none';
+                        }}
+                    }}
+                }});
+            }}
+
+            // 즉시 실행 + 여러 번 재시도
+            hideOpenButton();
+            setTimeout(hideOpenButton, 50);
+            setTimeout(hideOpenButton, 100);
+            setTimeout(hideOpenButton, 200);
+            setTimeout(hideOpenButton, 500);
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+
+def render_topbar(title: str):
+    st.markdown(
+        f"""
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+          <div style="font-size:22px;font-weight:950;color:#111827;">{title}</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="min-width:320px;">
+        """,
+        unsafe_allow_html=True,
+    )
+    st.text_input("통합검색", placeholder="통합검색 (데모)", label_visibility="collapsed", key="global_search")
+    st.markdown("</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns([1, 1], gap="small")
+    with c1:
+        st.button("🔔", key="topbell")
+    with c2:
+        st.button("👤", key="topuser")
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+def info_card(title: str, subtitle: str, lines: List[Tuple[str, str]], badge: Optional[str] = None):
+    badge_html = ""
+    if badge:
+        badge_html = f"""
+        <span style="
+          background: rgba(19,159,176,0.15);
+          color: #0b7f8e;
+          font-weight: 950;
+          padding: 6px 10px;
+          border-radius: 999px;
+          font-size: 12px;
+          border: 1px solid rgba(19,159,176,0.25);
+          white-space: nowrap;
+        ">{badge}</span>
+        """
+
+    kv_html = "".join([
+        f'<div style="color:rgba(0,0,0,0.55);font-weight:850;">{k}</div>'
+        f'<div style="color:#111827;font-weight:950;">{v}</div>'
+        for k, v in lines
+    ])
+
+    st.markdown(
+        f"""
+        <div class="hs-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-weight:950;font-size:15px;color:#111827;">{title}</div>
+              <div style="margin-top:2px;color:rgba(0,0,0,0.55);font-size:13px;">{subtitle}</div>
+            </div>
+            {badge_html}
+          </div>
+
+          <div style="display:grid;grid-template-columns:92px 1fr;row-gap:8px;column-gap:12px;font-size:13px;margin-top:10px;flex:1;">
+            {kv_html}
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def app_links_card(title: str, links: list[str], role: str):
+    st.markdown(f"**{title}**")
+    for i, name in enumerate(links):
+        st.button(name, use_container_width=True, key=f"link_{role}_{name}_{i}")
+
+def render_chatbot_modal(user_id: str):
+    """
+    챗봇 모달 다이얼로그
+    - 플로팅 위젯 또는 사이드바에서 호출
+    """
+    from core.chatbot_engine import ChatbotEngine
+
+    # 채팅 히스토리 초기화
+    st.session_state.setdefault("modal_chat_messages", [])
+
+    # 엔진 초기화
+    engine = ChatbotEngine(user_id=user_id)
+
+    # 모달 스타일
+    st.markdown("""
+        <style>
+        /* 모달 크기 조정 */
+        [data-testid="stDialog"] {
+            width: 800px !important;
+            max-width: 90vw !important;
+        }
+        [data-testid="stDialog"] > div {
+            max-height: 80vh !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### 🤖 노티가드 AI 챗봇")
+    st.caption("효성전기 공지사항에 대해 무엇이든 물어보세요!")
+
+    # 채팅 히스토리 표시
+    chat_container = st.container(height=400)
+    with chat_container:
+        if len(st.session_state.modal_chat_messages) == 0:
+            st.info("👋 안녕하세요! 저는 노티가드입니다.\n\n효성전기의 공지사항에 대해 궁금한 점을 물어보세요!")
+
+        for msg in st.session_state.modal_chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+    # 입력창
+    prompt = st.chat_input("예: 이번 주 안전교육 일정 알려줘", key="modal_chat_input")
+
+    if prompt:
+        # 사용자 메시지 추가
+        st.session_state.modal_chat_messages.append({
+            "role": "user",
+            "content": prompt
+        })
+
+        # 챗봇 응답
+        result = engine.ask(prompt)
+        response = result["response"]
+
+        # 봇 메시지 추가
+        st.session_state.modal_chat_messages.append({
+            "role": "assistant",
+            "content": response
+        })
+
+        st.rerun()
+
+    # 하단 버튼
+    st.divider()
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.button("🔄 대화 초기화", use_container_width=True, key="modal_reset"):
+            st.session_state.modal_chat_messages = []
+            st.rerun()
+    with col2:
+        if st.button("닫기", use_container_width=True, key="modal_close"):
+            st.session_state._chatbot_modal_open = False
+            st.rerun()
+
+
+def portal_sidebar(*, role: str, active_menu: str, on_menu_change):
+    st.sidebar.markdown("## HS HYOSUNG")
+
+    # 메뉴 구성 (챗봇 추가)
+    menus = ["홈", "게시판"] + (["글쓰기"] if role == "ADMIN" else []) + ["챗봇", "메일","문서관리","커뮤니티","보고"]
+
+    for m in menus:
+        if st.sidebar.button(m, key=f"nav_{role}_{m}", use_container_width=True):
+            # 챗봇 메뉴는 페이지 전환
+            if m == "챗봇":
+                st.switch_page("pages/chatbot.py")
+            else:
+                on_menu_change(m)
+                st.rerun()
+
+    st.sidebar.markdown("---")
+
+    if st.sidebar.button("로그아웃", key=f"logout_{role}", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.role = None
+        st.session_state.employee_id = None
+        st.session_state.employee_info = None
+        st.session_state._login_modal_open = True
+        st.switch_page("pages/0_Login.py")
