@@ -241,7 +241,7 @@ with st.sidebar:
             cur = conn.execute("""
                 SELECT COUNT(*) as count
                 FROM chat_logs
-                WHERE created_at >= ?
+                WHERE created_at >= %s
             """, (today_start,))
             row = cur.fetchone()
             today_count = row[0] if row else 0
