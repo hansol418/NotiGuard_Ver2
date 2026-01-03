@@ -15,7 +15,7 @@ load_dotenv()
 
 # POTENS API 설정
 POTENS_API_KEY = os.getenv("POTENS_API_KEY", "")
-POTENS_API_URL = os.getenv("POTENS_API_URL", "https://api.potens.ai/v1/chat/completions")
+POTENS_API_URL = os.getenv("POTENS_API_URL", "https://ai.potens.ai/api/chat")
 RESPONSE_TIMEOUT = float(os.getenv("RESPONSE_TIMEOUT", "30"))
 
 # PostgreSQL 사용 여부
@@ -231,11 +231,7 @@ class ChatbotEngine:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        payload = {
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        }
+        payload = {"prompt": prompt}
 
         try:
             response = requests.post(
