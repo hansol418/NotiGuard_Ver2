@@ -107,14 +107,58 @@ if st.session_state.role == "EMPLOYEE":
             st.markdown("---")
 
 # -------------------------
+# 챗봇 세션 관리
+# -------------------------
+# 세션 스토리지 초기화
+if "chat_sessions" not in st.session_state:
+    st.session_state.chat_sessions = []  # [{id, summary, messages, created_at}]
+
+if "current_session_id" not in st.session_state:
+    st.session_state.current_session_id = None
+
+# 현재 세션이 없으면 새로 생성
+if st.session_state.current_session_id is None:
+    import time
+    session_id = int(time.time() * 1000)
+    st.session_state.chat_sessions.append({
+        "id": session_id,
+        "summary": "새 대화",
+        "messages": [],
+        "created_at": session_id
+    })
+    st.session_state.current_session_id = session_id
+
+# 현재 세션 가져오기
+current_session = next(
+    (s for s in st.session_state.chat_sessions if s["id"] == st.session_state.current_session_id),
+    None
+)
+
+# 세션이 없으면 새로 생성 (안전장치)
+if current_session is None:
+    import time
+    session_id = int(time.time() * 1000)
+    current_session = {
+        "id": session_id,
+        "summary": "새 대화",
+        "messages": [],
+        "created_at": session_id
+    }
+    st.session_state.chat_sessions.append(current_session)
+    st.session_state.current_session_id = session_id
+
+# 하위 호환성을 위해 chat_messages 유지
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = current_session["messages"]
+else:
+    # 현재 세션의 메시지와 동기화
+    current_session["messages"] = st.session_state.chat_messages
+
+# -------------------------
 # 챗봇 UI
 # -------------------------
 st.markdown("### 🤖 공지사항 AI 도우미")
 st.caption("효성전기 공지사항에 대해 무엇이든 물어보세요!")
-
-# 채팅 히스토리 초기화
-if "chat_messages" not in st.session_state:
-    st.session_state.chat_messages = []
 
 # -------------------------
 # 채팅 메시지 표시
@@ -162,6 +206,12 @@ if prompt := st.chat_input("예: 이번 주 안전교육 일정 알려줘"):
     with st.chat_message("assistant"):
         with st.spinner("답변 생성 중..."):
             engine = ChatbotEngine(user_id=user_id)
+
+            # 첫 질문인 경우 세션 요약 업데이트
+            if len(st.session_state.chat_messages) == 1:
+                summary = engine.summarize_query(prompt)
+                current_session["summary"] = summary
+
             result = engine.ask(prompt)
 
             response = result["response"]
@@ -211,6 +261,59 @@ if prompt := st.chat_input("예: 이번 주 안전교육 일정 알려줘"):
 with st.sidebar:
     st.markdown("---")
 
+    # 새 대화 시작 버튼
+    if st.button("➕ 새 대화", use_container_width=True, key="new_chat"):
+        import time
+        session_id = int(time.time() * 1000)
+        st.session_state.chat_sessions.append({
+            "id": session_id,
+            "summary": "새 대화",
+            "messages": [],
+            "created_at": session_id
+        })
+        st.session_state.current_session_id = session_id
+        st.session_state.chat_messages = []
+        st.rerun()
+
+    st.markdown("---")
+
+    # 채팅 기록 표시
+    st.markdown("### 💬 대화 기록")
+
+    if len(st.session_state.chat_sessions) > 0:
+        # 최신 세션부터 표시 (created_at 내림차순)
+        sorted_sessions = sorted(
+            st.session_state.chat_sessions,
+            key=lambda x: x["created_at"],
+            reverse=True
+        )
+
+        for session in sorted_sessions:
+            session_id = session["id"]
+            summary = session["summary"]
+            msg_count = len(session["messages"])
+
+            # 현재 세션인지 확인
+            is_current = (session_id == st.session_state.current_session_id)
+
+            # 세션 버튼 (현재 세션은 primary 스타일)
+            button_label = f"{'🔵' if is_current else '⚪'} {summary} ({msg_count//2})"
+
+            if st.button(
+                button_label,
+                key=f"session_{session_id}",
+                use_container_width=True,
+                type="primary" if is_current else "secondary"
+            ):
+                # 세션 전환
+                st.session_state.current_session_id = session_id
+                st.session_state.chat_messages = session["messages"]
+                st.rerun()
+    else:
+        st.caption("대화 기록이 없습니다.")
+
+    st.markdown("---")
+
     st.markdown("### 💡 사용 팁")
     st.markdown("""
     **질문 예시:**
@@ -223,7 +326,28 @@ with st.sidebar:
     st.markdown("---")
 
     # 대화 초기화 버튼
-    if st.button("🔄 대화 초기화", use_container_width=True, key="reset_chat"):
+    if st.button("🗑️ 현재 대화 삭제", use_container_width=True, key="delete_chat"):
+        # 현재 세션 삭제
+        st.session_state.chat_sessions = [
+            s for s in st.session_state.chat_sessions
+            if s["id"] != st.session_state.current_session_id
+        ]
+
+        # 새 세션 생성
+        if len(st.session_state.chat_sessions) == 0:
+            import time
+            session_id = int(time.time() * 1000)
+            st.session_state.chat_sessions.append({
+                "id": session_id,
+                "summary": "새 대화",
+                "messages": [],
+                "created_at": session_id
+            })
+            st.session_state.current_session_id = session_id
+        else:
+            # 가장 최근 세션으로 전환
+            st.session_state.current_session_id = st.session_state.chat_sessions[0]["id"]
+
         st.session_state.chat_messages = []
         st.rerun()
 
