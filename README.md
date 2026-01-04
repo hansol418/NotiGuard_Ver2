@@ -421,6 +421,11 @@ v1.0 MVP ✅
 - ✅ 독립 챗봇 페이지
 - ✅ 채팅 로그 저장
 - ✅ 참조 공지 추출 및 표시
+- ✅ 채팅 세션 관리 (자동 요약)
+- ✅ 탭 기반 대화 기록 UI (최근 20개)
+- ✅ 참조 공지 제목 표시 (버튼에 제목 포함)
+- ✅ PostgreSQL 프로덕션 호환성 확보
+- ✅ 시스템 프롬프트 개선 (UX 향상)
 
 ---
 
@@ -489,6 +494,7 @@ Railway 등 클라우드 환경에서 재배포 시
 - **`docs/CLAUDE.md`** - 로컬 개발 환경 설정 가이드
 - **`docs/RAILWAY_ENV_SETUP.md`** - Railway 환경변수 설정 가이드
 - **`docs/README_2026-01-03.md`** - 전체 기능 개발 상세 문서
+- **`docs/CHANGELOG_2026-01-04.md`** - 챗봇 시스템 개선 및 버그 수정 상세 문서 ✨
 
 ### 기능별 문서
 - `docs/CHATBOT_MODAL_IMPLEMENTATION.md` - 챗봇 모달 구현
@@ -519,6 +525,6 @@ This project is an internal MVP project.
 
 ---
 
-**Version**: v1.0 MVP (Production)
+**Version**: v1.1 (Chatbot Enhancement)
 **Last Updated**: 2026-01-04
 **Deployment**: Railway ✅ 

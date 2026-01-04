@@ -6,6 +6,15 @@
 # Documentation (로컬 개발 문서)
 docs/
 
+# Test files (테스트 스크립트)
+tests/
+
+# Scripts (마이그레이션/유틸리티)
+scripts/
+
+# Backup files (백업 파일)
+backup/
+
 # Database
 *.db
 *.db-journal
