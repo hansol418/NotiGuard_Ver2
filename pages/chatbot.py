@@ -172,12 +172,29 @@ for msg_idx, msg in enumerate(st.session_state.chat_messages):
             st.markdown("---")
             st.caption("📎 참조된 공지사항:")
 
+            # 상세 정보(제목 포함) 사용, 없으면 기존 방식(ID만)
+            notice_details = msg.get("notice_details", [])
+
             # 버튼을 가로로 배치
-            cols = st.columns(min(3, len(msg["notice_refs"])))
-            for i, ref_id in enumerate(msg["notice_refs"][:3]):
+            display_count = min(3, len(msg["notice_refs"]))
+            cols = st.columns(display_count)
+
+            for i in range(display_count):
                 with cols[i]:
+                    # notice_details가 있으면 제목 사용, 없으면 ID만
+                    if i < len(notice_details):
+                        detail = notice_details[i]
+                        ref_id = detail["post_id"]
+                        title = detail["title"]
+                        # 제목이 너무 길면 자르기 (20자)
+                        short_title = title[:20] + "..." if len(title) > 20 else title
+                        button_label = f"📄 {short_title}"
+                    else:
+                        ref_id = msg["notice_refs"][i]
+                        button_label = f"공지 #{ref_id} 보기"
+
                     if st.button(
-                        f"공지 #{ref_id} 보기",
+                        button_label,
                         key=f"notice_history_{msg_idx}_{i}_{ref_id}",
                         use_container_width=True
                     ):
@@ -217,6 +234,7 @@ if prompt := st.chat_input("예: 이번 주 안전교육 일정 알려줘"):
             response = result["response"]
             response_type = result["response_type"]
             notice_refs = result.get("notice_refs", [])
+            notice_details = result.get("notice_details", [])
 
             # 응답 타입별 스타일 적용
             if response_type == "MISSING":
@@ -230,11 +248,25 @@ if prompt := st.chat_input("예: 이번 주 안전교육 일정 알려줘"):
             if notice_refs:
                 st.markdown("---")
                 st.caption("📎 참조된 공지사항:")
-                cols = st.columns(min(3, len(notice_refs)))
-                for i, ref_id in enumerate(notice_refs[:3]):
+                display_count = min(3, len(notice_refs))
+                cols = st.columns(display_count)
+
+                for i in range(display_count):
                     with cols[i]:
+                        # notice_details가 있으면 제목 사용, 없으면 ID만
+                        if i < len(notice_details):
+                            detail = notice_details[i]
+                            ref_id = detail["post_id"]
+                            title = detail["title"]
+                            # 제목이 너무 길면 자르기 (20자)
+                            short_title = title[:20] + "..." if len(title) > 20 else title
+                            button_label = f"📄 {short_title}"
+                        else:
+                            ref_id = notice_refs[i]
+                            button_label = f"공지 #{ref_id} 보기"
+
                         if st.button(
-                            f"공지 #{ref_id} 보기",
+                            button_label,
                             key=f"notice_new_{ref_id}_{i}",
                             use_container_width=True
                         ):
@@ -252,6 +284,7 @@ if prompt := st.chat_input("예: 이번 주 안전교육 일정 알려줘"):
                 "role": "assistant",
                 "content": response,
                 "notice_refs": notice_refs,
+                "notice_details": notice_details,  # 제목 정보 포함
                 "timestamp": int(time.time() * 1000)  # 고유 키를 위한 타임스탬프
             })
 

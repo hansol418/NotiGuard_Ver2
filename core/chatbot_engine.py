@@ -76,6 +76,16 @@ class ChatbotEngine:
         # 6. 참조 공지 추출
         notice_refs = self._extract_notice_refs(response_text, recent_notices)
 
+        # 6-1. 참조 공지 상세 정보 생성 (ID + 제목)
+        notice_details = []
+        for ref_id in notice_refs:
+            notice = next((n for n in recent_notices if n['post_id'] == ref_id), None)
+            if notice:
+                notice_details.append({
+                    "post_id": ref_id,
+                    "title": notice['title']
+                })
+
         # 7. 키워드 추출
         keywords = self._extract_keywords(user_query)
 
@@ -92,6 +102,7 @@ class ChatbotEngine:
             "response": self._clean_response(response_text),
             "response_type": response_type,
             "notice_refs": notice_refs,
+            "notice_details": notice_details,  # 제목 포함 상세 정보 추가
             "keywords": keywords
         }
 
