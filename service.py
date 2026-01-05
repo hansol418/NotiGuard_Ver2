@@ -33,7 +33,7 @@ def login_account(login_id: str, pw: str) -> Optional[Dict]:
 
     with get_conn() as conn:
         cur = conn.execute(
-            "SELECT login_id, password_hash, role, employee_id FROM accounts WHERE login_id = %s",
+            "SELECT login_id, password_hash, role, employee_id FROM accounts WHERE login_id = ?",
             (login_id,),
         )
         acc = cur.fetchone()
@@ -125,7 +125,7 @@ def save_attachments(post_id: int, uploaded_files: List[Any]) -> None:
             conn.execute(
                 """
                 INSERT INTO notice_files(post_id, filename, mime_type, file_path, file_size, uploaded_at)
-                VALUES(%s,%s,%s,%s,%s,%s)
+                VALUES(?,?,?,?,?,?)
                 """,
                 (int(post_id), orig_name, mime, file_path_or_url, size, ts),
             )
@@ -136,7 +136,7 @@ def list_attachments(post_id: int) -> List[Dict]:
             """
             SELECT file_id, post_id, filename, mime_type, file_path, file_size, uploaded_at
             FROM notice_files
-            WHERE post_id = %s
+            WHERE post_id = ?
             ORDER BY file_id ASC
             """,
             (int(post_id),),
@@ -181,7 +181,7 @@ def save_post(title: str, content: str, ntype: str, uploaded_files: Optional[Lis
         conn.execute(
             """
             INSERT INTO notices(post_id, created_at, type, title, content, author, views)
-            VALUES(%s,%s,%s,%s,%s,%s,0)
+            VALUES(?,?,?,?,?,?,0)
             """,
             (post_id, ts, safe_type, title, content, author),
         )
@@ -220,7 +220,7 @@ def list_posts() -> List[Dict]:
 
 def get_post_by_id(post_id: int) -> Optional[Dict]:
     with get_conn() as conn:
-        cur = conn.execute("SELECT * FROM notices WHERE post_id = %s", (int(post_id),))
+        cur = conn.execute("SELECT * FROM notices WHERE post_id = ?", (int(post_id),))
         r = cur.fetchone()
     if not r:
         return None
@@ -241,7 +241,7 @@ def get_post_by_id(post_id: int) -> Optional[Dict]:
 
 def increment_views(post_id: int) -> bool:
     with get_conn() as conn:
-        cur = conn.execute("UPDATE notices SET views = views + 1 WHERE post_id = %s", (int(post_id),))
+        cur = conn.execute("UPDATE notices SET views = views + 1 WHERE post_id = ?", (int(post_id),))
         return cur.rowcount > 0
 
 def update_post(post_id: int, title: str, content: str, ntype: str, uploaded_files: Optional[List[Any]] = None) -> bool:
@@ -264,8 +264,8 @@ def update_post(post_id: int, title: str, content: str, ntype: str, uploaded_fil
         cur = conn.execute(
             """
             UPDATE notices
-            SET title = %s, content = %s, type = %s
-            WHERE post_id = %s
+            SET title = ?, content = ?, type = ?
+            WHERE post_id = ?
             """,
             (title, content, safe_type, int(post_id)),
         )
@@ -299,7 +299,7 @@ def delete_post(post_id: int) -> bool:
 
     # DB 삭제 (FK CASCADE로 notice_files, popups, popup_logs도 자동 삭제)
     with get_conn() as conn:
-        cur = conn.execute("DELETE FROM notices WHERE post_id = %s", (int(post_id),))
+        cur = conn.execute("DELETE FROM notices WHERE post_id = ?", (int(post_id),))
         return cur.rowcount > 0
 
 # -------------------------
@@ -318,7 +318,7 @@ def create_popup(post_info: Dict, selected_departments: List[str], selected_team
         conn.execute(
             """
             INSERT INTO popups(popup_id, post_id, title, content, target_departments, target_teams, created_at)
-            VALUES(%s,%s,%s,%s,%s,%s,%s)
+            VALUES(?,?,?,?,?,?,?)
             """,
             (popup_id, post_id, title, content, dept_csv, team_csv, ts),
         )
@@ -330,7 +330,7 @@ def create_popup(post_info: Dict, selected_departments: List[str], selected_team
 # -------------------------
 def get_employee_info(employee_id: str) -> Optional[Dict]:
     with get_conn() as conn:
-        cur = conn.execute("SELECT * FROM employees WHERE employee_id = %s", (employee_id,))
+        cur = conn.execute("SELECT * FROM employees WHERE employee_id = ?", (employee_id,))
         r = cur.fetchone()
     if not r:
         return None
@@ -353,7 +353,7 @@ def _has_responded(employee_id: str, popup_id: int) -> bool:
         cur = conn.execute(
             """
             SELECT 1 FROM popup_logs
-            WHERE employee_id = %s AND popup_id = %s
+            WHERE employee_id = ? AND popup_id = ?
             LIMIT 1
             """,
             (employee_id, int(popup_id)),
@@ -401,7 +401,12 @@ def get_latest_popup_for_employee(employee_id: str) -> Optional[Dict]:
 
             # 이미지가 있으면 같이 내려줌 (없으면 필드 자체가 없어도 됨)
             if img:
-                payload["imagePath"] = img.get("filePath")  # employee.py가 이걸 읽어서 st.image로 출력
+                file_path = img.get("filePath", "")
+                # URL인지 로컬 경로인지 구분하여 올바른 키로 전달
+                if file_path.startswith("http://") or file_path.startswith("https://"):
+                    payload["imageUrl"] = file_path  # R2 URL
+                else:
+                    payload["imagePath"] = file_path  # 로컬 파일 경로
 
             return payload
     return None
@@ -416,7 +421,7 @@ def record_popup_action(employee_id: str, popup_id: int, action: str, confirmed:
         conn.execute(
             """
             INSERT INTO popup_logs(created_at, employee_id, popup_id, action, confirmed)
-            VALUES(%s,%s,%s,%s,%s)
+            VALUES(?,?,?,?,?)
             """,
             (ts, employee_id, int(popup_id), action, confirmed or ""),
         )
@@ -428,7 +433,7 @@ def confirm_popup_action(employee_id: str, popup_id: int) -> bool:
 def ignore_popup_action(employee_id: str, popup_id: int) -> Dict:
     with get_conn() as conn:
         cur = conn.execute(
-            "SELECT ignore_remaining FROM employees WHERE employee_id = %s",
+            "SELECT ignore_remaining FROM employees WHERE employee_id = ?",
             (employee_id,),
         )
         r = cur.fetchone()
@@ -441,7 +446,7 @@ def ignore_popup_action(employee_id: str, popup_id: int) -> Dict:
 
         remaining -= 1
         conn.execute(
-            "UPDATE employees SET ignore_remaining = %s WHERE employee_id = %s",
+            "UPDATE employees SET ignore_remaining = ? WHERE employee_id = ?",
             (remaining, employee_id),
         )
 
@@ -451,3 +456,36 @@ def ignore_popup_action(employee_id: str, popup_id: int) -> Dict:
 def log_chatbot_move(employee_id: str, popup_id: int) -> bool:
     record_popup_action(employee_id, popup_id, "챗봇이동", "")
     return True
+
+
+# -------------------------
+# 문의(Inquiry)
+# -------------------------
+def save_inquiry(employee_id: str, department: str, user_query: str, content: str) -> bool:
+    """
+    담당자 문의 저장
+
+    Args:
+        employee_id: 직원 ID
+        department: 문의 대상 부서
+        user_query: 원본 질문
+        content: 문의 내용
+
+    Returns:
+        성공 여부
+    """
+    ts = now_ms()
+
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO inquiries(employee_id, department, user_query, content, status, created_at)
+                VALUES(?,?,?,?,?,?)
+                """,
+                (employee_id, department, user_query, content, "pending", ts),
+            )
+        return True
+    except Exception as e:
+        print(f"문의 저장 실패: {e}")
+        return False

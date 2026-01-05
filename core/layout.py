@@ -290,6 +290,7 @@ def render_chatbot_modal(user_id: str):
     챗봇 모달 다이얼로그
     - 플로팅 위젯 또는 사이드바에서 호출
     """
+    import streamlit.components.v1 as components
     from core.chatbot_engine import ChatbotEngine
 
     # 채팅 히스토리 초기화
@@ -298,25 +299,80 @@ def render_chatbot_modal(user_id: str):
     # 엔진 초기화
     engine = ChatbotEngine(user_id=user_id)
 
-    # 모달 스타일
-    st.markdown("""
-        <style>
-        /* 모달 크기 조정 */
-        [data-testid="stDialog"] {
-            width: 800px !important;
-            max-width: 90vw !important;
-        }
-        [data-testid="stDialog"] > div {
-            max-height: 80vh !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    # 챗봇 모달 전용 스타일 (JS로 고유 ID 추가)
+    components.html(
+        """
+        <script>
+        (function () {
+          const doc = window.parent.document;
+          const id = "chatbot-modal-style";
+          if (doc.getElementById(id)) return;
+
+          // 챗봇 모달에 고유 클래스 추가
+          const dialogs = doc.querySelectorAll('div[role="dialog"]');
+          dialogs.forEach(dlg => {
+            const title = dlg.querySelector('h2');
+            if (title && title.textContent.includes('노티가드 AI 챗봇')) {
+              dlg.classList.add('chatbot-modal');
+            }
+          });
+
+          // 챗봇 모달 전용 스타일
+          const style = doc.createElement("style");
+          style.id = id;
+          style.innerHTML = `
+            div[role="dialog"].chatbot-modal > div {
+              width: min(700px, 90vw) !important;
+              max-width: min(700px, 90vw) !important;
+              max-height: 85vh !important;
+            }
+
+            /* 챗봇 모달 내부 여백 조정 */
+            div[role="dialog"].chatbot-modal .block-container {
+              padding-left: 1rem !important;
+              padding-right: 1rem !important;
+              max-width: 100% !important;
+            }
+
+            /* chat_input 너비 조정 */
+            div[role="dialog"].chatbot-modal [data-testid="stChatInput"] {
+              max-width: 100% !important;
+            }
+          `;
+          doc.head.appendChild(style);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
     st.markdown("### 🤖 노티가드 AI 챗봇")
     st.caption("효성전기 공지사항에 대해 무엇이든 물어보세요!")
 
-    # 채팅 히스토리 표시
-    chat_container = st.container(height=400)
+    # 초기 질문 처리 (팝업에서 넘어온 경우)
+    initial_query = st.session_state.get("_chatbot_initial_query")
+    if initial_query and len(st.session_state.modal_chat_messages) == 0:
+        # 자동으로 질문 처리
+        st.session_state.modal_chat_messages.append({
+            "role": "user",
+            "content": initial_query
+        })
+
+        # 챗봇 응답 생성
+        with st.spinner("답변 생성 중..."):
+            result = engine.ask(initial_query)
+            response = result["response"]
+
+            st.session_state.modal_chat_messages.append({
+                "role": "assistant",
+                "content": response
+            })
+
+        # 초기 질문 초기화 (재사용 방지)
+        st.session_state["_chatbot_initial_query"] = None
+
+    # 채팅 히스토리 표시 (높이 축소)
+    chat_container = st.container(height=350)
     with chat_container:
         if len(st.session_state.modal_chat_messages) == 0:
             st.info("👋 안녕하세요! 저는 노티가드입니다.\n\n효성전기의 공지사항에 대해 궁금한 점을 물어보세요!")
@@ -355,14 +411,21 @@ def render_chatbot_modal(user_id: str):
 
     # 하단 버튼
     st.divider()
-    col1, col2 = st.columns([3, 1])
+    col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
         if st.button("🔄 대화 초기화", use_container_width=True, key="modal_reset"):
             st.session_state.modal_chat_messages = []
+            st.session_state["_chatbot_initial_query"] = None
             st.rerun()
     with col2:
+        if st.button("📧 담당자 문의", use_container_width=True, key="modal_email"):
+            # 챗봇 페이지로 이동
+            st.session_state._chatbot_modal_open = False
+            st.switch_page("pages/chatbot.py")
+    with col3:
         if st.button("닫기", use_container_width=True, key="modal_close"):
             st.session_state._chatbot_modal_open = False
+            st.session_state["_chatbot_initial_query"] = None
             st.rerun()
 
 

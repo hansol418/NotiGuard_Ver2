@@ -5,7 +5,11 @@ Streamlit 네이티브 채팅 UI
 import streamlit as st
 from core.layout import apply_portal_theme, render_topbar, portal_sidebar
 from core.chatbot_engine import ChatbotEngine
+from core.config import DEPARTMENT_EMAILS, ADMIN_EMAIL
+from core.email_utils import send_email
 import service
+import time
+from datetime import datetime
 
 st.set_page_config(
     page_title="노티가드 챗봇",
@@ -23,6 +27,126 @@ st.session_state.setdefault("employee_id", None)
 
 if not st.session_state.get("logged_in"):
     st.switch_page("pages/0_Login.py")
+
+# -------------------------
+# 헬퍼 함수
+# -------------------------
+def format_timestamp(ts):
+    """밀리초 타임스탬프를 읽기 쉬운 날짜 형식으로 변환"""
+    try:
+        if isinstance(ts, int):
+            dt = datetime.fromtimestamp(ts / 1000)
+            return dt.strftime("%Y-%m-%d")
+        return str(ts)
+    except:
+        return ""
+
+# -------------------------
+# 담당자 문의 다이얼로그
+# -------------------------
+@st.dialog("📧 담당자에게 문의하기", width="large")
+def email_dialog(user_query: str):
+    """담당자 이메일 문의 다이얼로그"""
+    user_id = st.session_state.get("employee_id") or "guest"
+    engine = ChatbotEngine(user_id=user_id)
+
+    # 세션 상태 초기화
+    if "active_mail_query" not in st.session_state or st.session_state.active_mail_query != user_query:
+        st.session_state.active_mail_query = user_query
+
+        # 직원 정보 가져오기
+        emp_info = st.session_state.get("employee_info", {})
+        dept = emp_info.get("department", "")
+        name = emp_info.get("name", "")
+        user_info_str = f"\n\n[작성자 정보]\n소속: {dept}\n이름: {name}" if dept else ""
+
+        # 초기 내용 구성
+        initial_body = f"질문 내용: {user_query}{user_info_str}\n\n[추가 문의 사항을 작성해주세요]"
+        st.session_state.mail_body = initial_body
+
+        # 부서 자동 감지
+        detected_dept = engine.detect_target_department(user_query)
+        st.session_state.mail_dept = detected_dept if detected_dept in DEPARTMENT_EMAILS else list(DEPARTMENT_EMAILS.keys())[0]
+
+    st.write("해당 질문에 대해 담당 부서 관리자에게 직접 이메일로 문의합니다.")
+    st.info(f"💬 질문: {user_query}")
+
+    # AI 다듬기 콜백
+    def handle_refine():
+        current_content = st.session_state.mail_body
+        target_dept = st.session_state.mail_dept
+
+        if not current_content.strip():
+            st.warning("내용을 입력해주세요.")
+            return
+
+        with st.spinner("AI가 내용을 다듬고 있습니다..."):
+            refined = engine.refine_email_content(target_dept, user_query, current_content)
+            st.session_state.mail_body = refined
+
+    # 레이아웃
+    with st.container():
+        # 부서 선택
+        target_dept = st.selectbox(
+            "문의할 부서 선택",
+            options=list(DEPARTMENT_EMAILS.keys()),
+            key="mail_dept",
+            help="질문과 관련된 담당 부서를 선택해주세요."
+        )
+
+        # 내용 작성
+        content = st.text_area(
+            "문의 내용 (AI가 다듬어 드립니다 ✨)",
+            key="mail_body",
+            height=300,
+            placeholder="관리자에게 전달할 내용을 자유롭게 작성하세요.\n작성 후 'AI로 내용 다듬기'를 누르면 격식 있는 이메일로 변환됩니다."
+        )
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            st.button(
+                "✨ AI로 내용 다듬기",
+                use_container_width=True,
+                on_click=handle_refine,
+                help="내용을 작성한 뒤 클릭하면 전문가 톤으로 다듬어줍니다."
+            )
+
+        with col2:
+            if st.button("📤 이메일 발송", type="primary", use_container_width=True):
+                manager_email = DEPARTMENT_EMAILS.get(target_dept, ADMIN_EMAIL)
+                subject = f"[노티가드 문의] {user_query[:30]}..."
+
+                with st.spinner(f"{target_dept} 담당자에게 메일 발송 중..."):
+                    # 이메일 발송 시도
+                    success = send_email(manager_email, subject, content)
+                    time.sleep(0.5)
+
+                # DB 저장
+                save_success = service.save_inquiry(user_id, target_dept, user_query, content)
+
+                if success:
+                    st.success(f"✅ 전송 완료! {target_dept} 담당자에게 문의 내용이 전달되었습니다.")
+                    st.info(f"수신자: {manager_email}")
+                else:
+                    st.warning("⚠️ SMTP 설정이 없어 실제 메일 발송은 되지 않았습니다.")
+                    st.info(f"""
+                        [전송 시뮬레이션]
+                        수신자: {manager_email}
+                        제목: {subject}
+
+                        *실제 발송을 위해서는 .env 파일의 SMTP 설정을 확인해주세요.*
+                    """)
+
+                if save_success:
+                    st.success("📝 관리자 페이지에 문의가 접수되었습니다.")
+
+                # 상태 정리
+                if "active_mail_query" in st.session_state:
+                    del st.session_state.active_mail_query
+                time.sleep(2)
+                st.rerun()
+
 
 # -------------------------
 # 메뉴 핸들러
@@ -186,44 +310,50 @@ with tab1:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-            # 어시스턴트 메시지에 참조 공지 버튼 표시
+            # 어시스턴트 메시지에 참조 공지 펼침/줄임 표시
             if msg["role"] == "assistant" and "notice_refs" in msg and msg["notice_refs"]:
                 st.markdown("---")
-                st.caption("📎 참조된 공지사항:")
 
-                # 상세 정보(제목 포함) 사용, 없으면 기존 방식(ID만)
+                # 상세 정보(제목 포함) 사용
                 notice_details = msg.get("notice_details", [])
 
-                # 버튼을 가로로 배치
-                display_count = min(3, len(msg["notice_refs"]))
-                cols = st.columns(display_count)
-
-                for i in range(display_count):
-                    with cols[i]:
-                        # notice_details가 있으면 제목 사용, 없으면 ID만
-                        if i < len(notice_details):
-                            detail = notice_details[i]
+                if notice_details:
+                    with st.expander(f"📚 참고한 공지사항 원문 보기 ({len(notice_details)}개)"):
+                        for i, detail in enumerate(notice_details):
                             ref_id = detail["post_id"]
                             title = detail["title"]
-                            # 제목이 너무 길면 자르기 (20자)
-                            short_title = title[:20] + "..." if len(title) > 20 else title
-                            button_label = f"📄 {short_title}"
-                        else:
-                            ref_id = msg["notice_refs"][i]
-                            button_label = f"공지 #{ref_id} 보기"
 
-                        if st.button(
-                            button_label,
-                            key=f"notice_history_{msg_idx}_{i}_{ref_id}",
-                            use_container_width=True
-                        ):
-                            st.session_state.selected_post_id = ref_id
-                            if st.session_state.role == "ADMIN":
-                                st.session_state.admin_menu = "게시판"
-                                st.switch_page("pages/admin.py")
-                            else:
-                                st.session_state.emp_menu = "게시판"
-                                st.switch_page("pages/employee.py")
+                            # 공지 상세 정보 가져오기
+                            post_info = service.get_post_by_id(ref_id)
+
+                            if post_info:
+                                with st.container():
+                                    c1, c2 = st.columns([4, 1])
+                                    with c1:
+                                        st.markdown(f"**📄 {title}**")
+                                        date_str = format_timestamp(post_info.get('timestamp', 0))
+                                        st.caption(f"📅 {date_str} | 내용: {post_info.get('content', '')[:80]}...")
+                                    with c2:
+                                        if st.button("보기", key=f"view_hist_ref_{msg_idx}_{i}_{ref_id}", use_container_width=True):
+                                            st.session_state.selected_post_id = ref_id
+                                            if st.session_state.role == "ADMIN":
+                                                st.session_state.admin_menu = "게시판"
+                                                st.switch_page("pages/admin.py")
+                                            else:
+                                                st.session_state.emp_menu = "게시판"
+                                                st.switch_page("pages/employee.py")
+                                    st.divider()
+
+            # 어시스턴트 메시지에 담당자 문의 버튼 추가
+            if msg["role"] == "assistant":
+                # 이전 사용자 메시지 가져오기 (원본 질문)
+                user_query = ""
+                if msg_idx > 0 and st.session_state.chat_messages[msg_idx - 1]["role"] == "user":
+                    user_query = st.session_state.chat_messages[msg_idx - 1]["content"]
+
+                if user_query:
+                    if st.button("📧 담당자에게 문의하기", key=f"email_btn_history_{msg_idx}", use_container_width=False):
+                        email_dialog(user_query)
 
     # -------------------------
     # 사용자 입력
@@ -263,39 +393,39 @@ with tab1:
                 else:
                     st.markdown(response)
 
-                # 참조 공지 바로가기
-                if notice_refs:
+                # 참조 공지 펼침/줄임 (새 응답)
+                if notice_refs and notice_details:
                     st.markdown("---")
-                    st.caption("📎 참조된 공지사항:")
-                    display_count = min(3, len(notice_refs))
-                    cols = st.columns(display_count)
+                    with st.expander(f"📚 참고한 공지사항 원문 보기 ({len(notice_details)}개)"):
+                        for i, detail in enumerate(notice_details):
+                            ref_id = detail["post_id"]
+                            title = detail["title"]
 
-                    for i in range(display_count):
-                        with cols[i]:
-                            # notice_details가 있으면 제목 사용, 없으면 ID만
-                            if i < len(notice_details):
-                                detail = notice_details[i]
-                                ref_id = detail["post_id"]
-                                title = detail["title"]
-                                # 제목이 너무 길면 자르기 (20자)
-                                short_title = title[:20] + "..." if len(title) > 20 else title
-                                button_label = f"📄 {short_title}"
-                            else:
-                                ref_id = notice_refs[i]
-                                button_label = f"공지 #{ref_id} 보기"
+                            # 공지 상세 정보 가져오기
+                            post_info = service.get_post_by_id(ref_id)
 
-                            if st.button(
-                                button_label,
-                                key=f"notice_new_{ref_id}_{i}",
-                                use_container_width=True
-                            ):
-                                st.session_state.selected_post_id = ref_id
-                                if st.session_state.role == "ADMIN":
-                                    st.session_state.admin_menu = "게시판"
-                                    st.switch_page("pages/admin.py")
-                                else:
-                                    st.session_state.emp_menu = "게시판"
-                                    st.switch_page("pages/employee.py")
+                            if post_info:
+                                with st.container():
+                                    c1, c2 = st.columns([4, 1])
+                                    with c1:
+                                        st.markdown(f"**📄 {title}**")
+                                        date_str = format_timestamp(post_info.get('timestamp', 0))
+                                        st.caption(f"📅 {date_str} | 내용: {post_info.get('content', '')[:80]}...")
+                                    with c2:
+                                        if st.button("보기", key=f"view_new_ref_{i}_{ref_id}", use_container_width=True):
+                                            st.session_state.selected_post_id = ref_id
+                                            if st.session_state.role == "ADMIN":
+                                                st.session_state.admin_menu = "게시판"
+                                                st.switch_page("pages/admin.py")
+                                            else:
+                                                st.session_state.emp_menu = "게시판"
+                                                st.switch_page("pages/employee.py")
+                                    st.divider()
+
+                # 담당자 문의 버튼 추가 (새 응답)
+                st.markdown("---")
+                if st.button("📧 담당자에게 문의하기", key="email_btn_new", use_container_width=False):
+                    email_dialog(prompt)
 
                 # 봇 메시지 저장 (참조 정보 포함)
                 import time

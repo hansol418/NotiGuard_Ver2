@@ -152,11 +152,12 @@ def _inject_dialog_style():
               width: min(1200px, 92vw) !important;
               max-width: min(1200px, 92vw) !important;
 
-              max-height: 85vh !important;
+              max-height: 90vh !important;
               border-radius: 18px !important;
 
-              /* ❗중요: 내부 overflow는 숨김(레이아웃 안정), 본문은 container(height=150)로 스크롤 */
-              overflow: hidden !important;
+              /* Dialog 전체에 스크롤 가능 (버튼이 잘리지 않도록) */
+              overflow-y: auto !important;
+              overflow-x: hidden !important;
             }
 
             /* dialog 내부 가운데 정렬 */
@@ -336,8 +337,8 @@ def popup_banner_dialog(payload: dict):
           font-size: 15px;
         }
 
-        /* 버튼 간격(너무 벌어지지 않게) */
-        .hs-gap{ margin-top: 6px; }
+        /* 버튼 간격(더 좁게) */
+        .hs-gap{ margin-top: 3px; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -367,23 +368,17 @@ def popup_banner_dialog(payload: dict):
                 st.rerun()
         st.stop()
 
-    # 본문(스크롤)
-    # 본문(스크롤): 이미지 + 텍스트 같이
-    BODY_H = 360  # 원하면 300~450 사이로 조절
-    with st.container(height=BODY_H, border=False):
+    # 이미지 먼저 표시 (본문 컨테이너 밖에서 크게)
+    img_url = payload.get("imageUrl") or payload.get("image_url")
+    img_path = payload.get("imagePath") or payload.get("image_path")
+    img_b64  = payload.get("imageBase64") or payload.get("image_base64")
 
-        # 1) 텍스트 렌더
-        safe_html = _escape(content).replace("\n", "<br>")
-        st.markdown(f'<div class="hs-content">{safe_html}</div>', unsafe_allow_html=True)
+    has_image = bool(img_url or img_path or img_b64)
 
-        # 2) 이미지 렌더 (있으면)
-        img_url = payload.get("imageUrl") or payload.get("image_url")
-        img_path = payload.get("imagePath") or payload.get("image_path")
-        img_b64  = payload.get("imageBase64") or payload.get("image_base64")
-
+    if has_image:
         try:
             if img_url:
-                # URL 이미지
+                # URL 이미지 (R2 등)
                 st.image(img_url, use_container_width=True)
 
             elif img_path:
@@ -399,8 +394,20 @@ def popup_banner_dialog(payload: dict):
                 img_bytes = base64.b64decode(img_b64)
                 st.image(img_bytes, use_container_width=True)
 
-        except Exception:
-            st.warning("첨부 이미지 표시 중 오류가 발생했습니다.")
+        except FileNotFoundError as e:
+            st.warning(f"첨부 이미지를 찾을 수 없습니다: {str(e)}")
+        except Exception as e:
+            st.warning(f"첨부 이미지 표시 중 오류가 발생했습니다: {str(e)}")
+
+        # 이미지와 텍스트 사이 간격
+        st.markdown('<div style="margin: 8px 0;"></div>', unsafe_allow_html=True)
+
+    # 본문(스크롤): 텍스트만
+    BODY_H = 200  # 이미지가 따로 표시되므로 텍스트 영역 축소
+    with st.container(height=BODY_H, border=False):
+        # 텍스트 렌더
+        safe_html = _escape(content).replace("\n", "<br>")
+        st.markdown(f'<div class="hs-content">{safe_html}</div>', unsafe_allow_html=True)
 
 
     st.markdown('<div class="hs-line"></div>', unsafe_allow_html=True)
@@ -449,19 +456,35 @@ def popup_banner_dialog(payload: dict):
     st.markdown('<div class="hs-gap hs-btn-chat">', unsafe_allow_html=True)
     if st.button("4. 챗봇으로 바로가기", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
         service.log_chatbot_move(emp_id, popup_id)
-        components.html(
-            """
-            <script>
-            (function () {
-              const url = "https://notiguard-production.up.railway.app/";
-              const w = window.open(url, "_blank", "noopener,noreferrer");
-              if (w) { w.opener = null; w.focus(); }
-            })();
-            </script>
-            """,
-            height=0,
-        )
+
+        # 챗봇 모달에 전달할 초기 질문 설정
+        st.session_state["_chatbot_initial_query"] = f"{title}에 대해 알려줘"
+
+        # 팝업 닫기
+        st.session_state._popup_modal_open = False
+        st.session_state._popup_payload = None
+        st.session_state._last_popup_id = popup_id
+
+        # 챗봇 모달 열기
+        st.session_state._chatbot_modal_open = True
+        st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+#   챗봇 모달 정의 및 체크 (메뉴 렌더링 전에 위치해야 함)
+# =========================================================
+@st.dialog("노티가드 AI 챗봇", width="large")
+def chatbot_modal():
+    from core.layout import render_chatbot_modal
+    employee_id = st.session_state.get("employee_id", "guest")
+    render_chatbot_modal(user_id=employee_id)
+
+# 챗봇 모달 상태 체크
+st.session_state.setdefault("_chatbot_modal_open", False)
+if st.session_state._chatbot_modal_open:
+    st.session_state._chatbot_modal_open = False
+    chatbot_modal()
+    st.stop()
 
 # =========================================================
 #   요약 모달 트리거 (중요공지 dialog 밖에서 호출)
@@ -635,18 +658,3 @@ elif menu == "게시판":
 
 else:
     st.info("준비 중인 메뉴입니다.")
-
-# -------------------------
-# 챗봇 모달
-# -------------------------
-@st.dialog("노티가드 AI 챗봇", width="large")
-def chatbot_modal():
-    from core.layout import render_chatbot_modal
-    employee_id = st.session_state.get("employee_id", "guest")
-    render_chatbot_modal(user_id=employee_id)
-
-# 모달 상태 체크
-st.session_state.setdefault("_chatbot_modal_open", False)
-if st.session_state._chatbot_modal_open:
-    st.session_state._chatbot_modal_open = False
-    chatbot_modal()

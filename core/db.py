@@ -31,10 +31,14 @@ class PostgresConnectionWrapper:
         """SQLite-style execute that returns a cursor"""
         if self._cursor is None:
             self._cursor = self._conn.cursor(cursor_factory=RealDictCursor)
+
+        # SQLite 플레이스홀더(?)를 PostgreSQL 플레이스홀더(%s)로 자동 변환
+        pg_sql = sql.replace('?', '%s')
+
         if params:
-            self._cursor.execute(sql, params)
+            self._cursor.execute(pg_sql, params)
         else:
-            self._cursor.execute(sql)
+            self._cursor.execute(pg_sql)
         return self._cursor
 
     def cursor(self, cursor_factory=None):

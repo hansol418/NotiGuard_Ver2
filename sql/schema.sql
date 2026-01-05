@@ -79,3 +79,22 @@ CREATE TABLE IF NOT EXISTS notice_files (
 
 CREATE INDEX IF NOT EXISTS idx_notice_files_post_id
 ON notice_files(post_id);
+
+-- ✅ 담당자 문의 테이블 추가
+-- 챗봇에서 담당자에게 문의한 내역 저장
+CREATE TABLE IF NOT EXISTS inquiries (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_id    TEXT,
+  department     TEXT NOT NULL,                -- 문의 대상 부서
+  user_query     TEXT NOT NULL DEFAULT '',    -- 원본 질문
+  content        TEXT NOT NULL,                -- 문의 내용
+  status         TEXT NOT NULL DEFAULT 'pending',  -- 'pending', 'resolved'
+  created_at     INTEGER NOT NULL,
+  FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_inquiries_created_at
+ON inquiries(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_inquiries_status
+ON inquiries(status);

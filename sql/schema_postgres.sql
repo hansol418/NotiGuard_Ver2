@@ -83,6 +83,18 @@ CREATE TABLE IF NOT EXISTS chat_logs (
   created_at     BIGINT NOT NULL
 );
 
+-- 담당자 문의 테이블
+CREATE TABLE IF NOT EXISTS inquiries (
+  id             SERIAL PRIMARY KEY,
+  employee_id    TEXT,
+  department     TEXT NOT NULL,
+  user_query     TEXT NOT NULL DEFAULT '',
+  content        TEXT NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'pending',
+  created_at     BIGINT NOT NULL,
+  FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE SET NULL
+);
+
 -- 인덱스 생성
 CREATE INDEX IF NOT EXISTS idx_popup_logs_emp_popup ON popup_logs(employee_id, popup_id);
 CREATE INDEX IF NOT EXISTS idx_notices_created_at ON notices(created_at);
@@ -91,6 +103,8 @@ CREATE INDEX IF NOT EXISTS idx_accounts_role ON accounts(role);
 CREATE INDEX IF NOT EXISTS idx_notice_files_post_id ON notice_files(post_id);
 CREATE INDEX IF NOT EXISTS idx_chat_logs_user ON chat_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_logs_created ON chat_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_inquiries_created_at ON inquiries(created_at);
+CREATE INDEX IF NOT EXISTS idx_inquiries_status ON inquiries(status);
 
 -- 기본 직원 데이터
 INSERT INTO employees (employee_id, name, department, team, ignore_remaining)
