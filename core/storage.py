@@ -58,6 +58,8 @@ def upload_file_to_r2(
     Returns:
         str: 업로드된 파일의 공개 URL
     """
+    from urllib.parse import quote
+
     s3 = get_r2_client()
 
     # S3 키 생성 (폴더/파일명)
@@ -76,13 +78,16 @@ def upload_file_to_r2(
         ExtraArgs=extra_args
     )
 
-    # 공개 URL 반환
+    # 공개 URL 반환 (URL 인코딩 적용)
+    # quote(s3_key, safe='/') - 슬래시는 인코딩하지 않음
+    encoded_key = quote(s3_key, safe='/')
+
     if R2_PUBLIC_URL:
         # 커스텀 도메인이 있으면 사용
-        return f"{R2_PUBLIC_URL}/{s3_key}"
+        return f"{R2_PUBLIC_URL}/{encoded_key}"
     else:
         # R2.dev 공개 URL
-        return f"https://pub-{R2_ACCOUNT_ID}.r2.dev/{s3_key}"
+        return f"https://pub-{R2_ACCOUNT_ID}.r2.dev/{encoded_key}"
 
 
 def download_file_from_r2(s3_key: str) -> bytes:
@@ -130,10 +135,15 @@ def get_file_url(s3_key: str) -> str:
     Returns:
         str: 공개 URL
     """
+    from urllib.parse import quote
+
+    # URL 인코딩 적용
+    encoded_key = quote(s3_key, safe='/')
+
     if R2_PUBLIC_URL:
-        return f"{R2_PUBLIC_URL}/{s3_key}"
+        return f"{R2_PUBLIC_URL}/{encoded_key}"
     else:
-        return f"https://pub-{R2_ACCOUNT_ID}.r2.dev/{s3_key}"
+        return f"https://pub-{R2_ACCOUNT_ID}.r2.dev/{encoded_key}"
 
 
 # ===== 로컬/Railway 자동 감지 저장 함수 =====

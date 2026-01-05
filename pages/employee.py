@@ -379,7 +379,26 @@ def popup_banner_dialog(payload: dict):
         try:
             if img_url:
                 # URL 이미지 (R2 등)
-                st.image(img_url, use_container_width=True)
+                # URL이 이미 인코딩되지 않았을 경우를 대비해 재인코딩
+                from urllib.parse import quote, unquote
+
+                # URL을 파싱하여 경로만 추출
+                if img_url.startswith("http"):
+                    # URL을 분해
+                    parts = img_url.split("/")
+                    base_url = "/".join(parts[:-2])  # https://domain/
+                    folder = parts[-2]  # uploads
+                    filename = parts[-1]  # filename
+
+                    # 파일명만 디코딩 후 재인코딩 (이중 인코딩 방지)
+                    decoded_filename = unquote(filename)
+                    encoded_filename = quote(decoded_filename, safe='')
+
+                    # 안전한 URL 재구성
+                    safe_url = f"{base_url}/{folder}/{encoded_filename}"
+                    st.image(safe_url, use_container_width=True)
+                else:
+                    st.image(img_url, use_container_width=True)
 
             elif img_path:
                 # 로컬 파일 이미지

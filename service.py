@@ -73,16 +73,43 @@ def _ensure_upload_dir():
 
 def _safe_filename(name: str) -> str:
     """
-    파일명에 들어가면 위험한 문자 최소 제거
+    파일명을 안전한 형식으로 변환 (한글 제거, 영문/숫자만 허용)
+
+    Args:
+        name: 원본 파일명
+
+    Returns:
+        안전한 파일명 (영문, 숫자, 언더스코어, 하이픈, 점만 포함)
     """
+    import re
+    from pathlib import Path
+
     name = (name or "").strip()
     if not name:
         return "file"
-    # 아주 기본적인 정리만(윈도우/리눅스 공통 문제 문자 제거)
-    bad = ['..', '/', '\\', ':', '*', '?', '"', '<', '>', '|']
-    for b in bad:
-        name = name.replace(b, "_")
-    return name
+
+    # 파일명과 확장자 분리
+    p = Path(name)
+    stem = p.stem  # 확장자 제외한 파일명
+    ext = p.suffix  # 확장자 (.png, .jpg 등)
+
+    # 영문, 숫자, 언더스코어, 하이픈만 허용 (한글 및 특수문자 제거)
+    safe_stem = re.sub(r'[^a-zA-Z0-9_-]', '_', stem)
+
+    # 연속된 언더스코어 제거
+    safe_stem = re.sub(r'_+', '_', safe_stem)
+
+    # 앞뒤 언더스코어 제거
+    safe_stem = safe_stem.strip('_')
+
+    # 빈 문자열이면 기본값
+    if not safe_stem:
+        safe_stem = "file"
+
+    # 확장자도 소문자로 정리
+    safe_ext = ext.lower()
+
+    return f"{safe_stem}{safe_ext}"
 
 def save_attachments(post_id: int, uploaded_files: List[Any]) -> None:
     """
