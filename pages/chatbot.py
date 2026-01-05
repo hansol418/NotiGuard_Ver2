@@ -54,8 +54,8 @@ def email_dialog(user_query: str):
     if "active_mail_query" not in st.session_state or st.session_state.active_mail_query != user_query:
         st.session_state.active_mail_query = user_query
 
-        # 직원 정보 가져오기
-        emp_info = st.session_state.get("employee_info", {})
+        # 직원 정보 가져오기 (None인 경우 빈 딕셔너리 사용)
+        emp_info = st.session_state.get("employee_info") or {}
         dept = emp_info.get("department", "")
         name = emp_info.get("name", "")
         user_info_str = f"\n\n[작성자 정보]\n소속: {dept}\n이름: {name}" if dept else ""
