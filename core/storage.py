@@ -192,9 +192,18 @@ def get_file(file_path_or_url: str) -> bytes:
         bytes: 파일 데이터
     """
     if file_path_or_url.startswith("http"):
-        # R2 URL → S3 키 추출 후 다운로드
-        s3_key = "/".join(file_path_or_url.split("/")[-2:])  # "uploads/file.pdf"
-        return download_file_from_r2(s3_key)
+        # R2 공개 URL → HTTP로 직접 다운로드
+        import requests
+
+        try:
+            response = requests.get(file_path_or_url, timeout=10)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            print(f"HTTP 다운로드 실패, S3 API 시도: {e}")
+            # HTTP 실패 시 S3 API로 다운로드 시도
+            s3_key = "/".join(file_path_or_url.split("/")[-2:])  # "uploads/file.pdf"
+            return download_file_from_r2(s3_key)
     else:
         # 로컬 파일
         with open(file_path_or_url, 'rb') as f:

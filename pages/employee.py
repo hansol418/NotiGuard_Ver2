@@ -368,7 +368,14 @@ def popup_banner_dialog(payload: dict):
                 st.rerun()
         st.stop()
 
-    # 이미지 먼저 표시 (본문 컨테이너 밖에서 크게)
+    # 본문 먼저 표시
+    BODY_H = 200
+    with st.container(height=BODY_H, border=False):
+        # 텍스트 렌더
+        safe_html = _escape(content).replace("\n", "<br>")
+        st.markdown(f'<div class="hs-content">{safe_html}</div>', unsafe_allow_html=True)
+
+    # 이미지는 본문 아래에 표시
     img_url = payload.get("imageUrl") or payload.get("image_url")
     img_path = payload.get("imagePath") or payload.get("image_path")
     img_b64  = payload.get("imageBase64") or payload.get("image_base64")
@@ -376,29 +383,21 @@ def popup_banner_dialog(payload: dict):
     has_image = bool(img_url or img_path or img_b64)
 
     if has_image:
+        st.markdown('<div style="margin: 12px 0;"></div>', unsafe_allow_html=True)
+
         try:
             if img_url:
-                # URL 이미지 (R2 등)
-                # URL이 이미 인코딩되지 않았을 경우를 대비해 재인코딩
-                from urllib.parse import quote, unquote
+                # R2 URL 이미지 - 다운로드해서 표시
+                from core.storage import get_file
 
-                # URL을 파싱하여 경로만 추출
-                if img_url.startswith("http"):
-                    # URL을 분해
-                    parts = img_url.split("/")
-                    base_url = "/".join(parts[:-2])  # https://domain/
-                    folder = parts[-2]  # uploads
-                    filename = parts[-1]  # filename
-
-                    # 파일명만 디코딩 후 재인코딩 (이중 인코딩 방지)
-                    decoded_filename = unquote(filename)
-                    encoded_filename = quote(decoded_filename, safe='')
-
-                    # 안전한 URL 재구성
-                    safe_url = f"{base_url}/{folder}/{encoded_filename}"
-                    st.image(safe_url, use_container_width=True)
-                else:
-                    st.image(img_url, use_container_width=True)
+                try:
+                    # R2에서 파일 다운로드
+                    img_bytes = get_file(img_url)
+                    st.image(img_bytes, use_container_width=True)
+                except Exception as download_error:
+                    # 다운로드 실패 시 직접 URL 시도
+                    st.warning(f"이미지 로드 중 오류: {str(download_error)}")
+                    st.caption(f"이미지 URL: {img_url}")
 
             elif img_path:
                 # 로컬 파일 이미지
@@ -417,16 +416,6 @@ def popup_banner_dialog(payload: dict):
             st.warning(f"첨부 이미지를 찾을 수 없습니다: {str(e)}")
         except Exception as e:
             st.warning(f"첨부 이미지 표시 중 오류가 발생했습니다: {str(e)}")
-
-        # 이미지와 텍스트 사이 간격
-        st.markdown('<div style="margin: 8px 0;"></div>', unsafe_allow_html=True)
-
-    # 본문(스크롤): 텍스트만
-    BODY_H = 200  # 이미지가 따로 표시되므로 텍스트 영역 축소
-    with st.container(height=BODY_H, border=False):
-        # 텍스트 렌더
-        safe_html = _escape(content).replace("\n", "<br>")
-        st.markdown(f'<div class="hs-content">{safe_html}</div>', unsafe_allow_html=True)
 
 
     st.markdown('<div class="hs-line"></div>', unsafe_allow_html=True)
