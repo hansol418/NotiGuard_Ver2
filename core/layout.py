@@ -432,8 +432,8 @@ def render_chatbot_modal(user_id: str):
 def portal_sidebar(*, role: str, active_menu: str, on_menu_change):
     st.sidebar.markdown("## HS HYOSUNG")
 
-    # 메뉴 구성 (챗봇 추가)
-    menus = ["홈", "게시판"] + (["글쓰기"] if role == "ADMIN" else []) + ["챗봇", "메일","문서관리","커뮤니티","보고"]
+    # 메뉴 구성 (챗봇, 문의관리 추가)
+    menus = ["홈", "게시판"] + (["글쓰기", "문의관리"] if role == "ADMIN" else []) + ["챗봇", "메일","문서관리","커뮤니티","보고"]
 
     for m in menus:
         if st.sidebar.button(m, key=f"nav_{role}_{m}", use_container_width=True):

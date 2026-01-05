@@ -516,3 +516,114 @@ def save_inquiry(employee_id: str, department: str, user_query: str, content: st
     except Exception as e:
         print(f"문의 저장 실패: {e}")
         return False
+
+def list_inquiries(status: Optional[str] = None, department: Optional[str] = None) -> List[Dict]:
+    """
+    문의 목록 조회
+
+    Args:
+        status: 상태 필터 ('pending' | 'completed' | None=전체)
+        department: 부서 필터 (None=전체)
+
+    Returns:
+        문의 목록 (최신순)
+    """
+    with get_conn() as conn:
+        query = """
+            SELECT i.id, i.employee_id, i.department, i.user_query, i.content,
+                   i.status, i.created_at, e.name as employee_name
+            FROM inquiries i
+            LEFT JOIN employees e ON i.employee_id = e.employee_id
+            WHERE 1=1
+        """
+        params = []
+
+        if status:
+            query += " AND i.status = ?"
+            params.append(status)
+
+        if department:
+            query += " AND i.department = ?"
+            params.append(department)
+
+        query += " ORDER BY i.created_at DESC"
+
+        cur = conn.execute(query, params)
+        rows = cur.fetchall()
+
+    result = []
+    for r in rows:
+        result.append({
+            "id": int(r["id"]),
+            "employeeId": r["employee_id"] or "guest",
+            "employeeName": r["employee_name"] or "게스트",
+            "department": r["department"],
+            "userQuery": r["user_query"],
+            "content": r["content"],
+            "status": r["status"],
+            "createdAt": int(r["created_at"]),
+        })
+    return result
+
+def get_inquiry_by_id(inquiry_id: int) -> Optional[Dict]:
+    """
+    특정 문의 상세 조회
+
+    Args:
+        inquiry_id: 문의 ID
+
+    Returns:
+        문의 상세 정보
+    """
+    with get_conn() as conn:
+        cur = conn.execute(
+            """
+            SELECT i.id, i.employee_id, i.department, i.user_query, i.content,
+                   i.status, i.created_at, e.name as employee_name, e.team as employee_team
+            FROM inquiries i
+            LEFT JOIN employees e ON i.employee_id = e.employee_id
+            WHERE i.id = ?
+            """,
+            (int(inquiry_id),),
+        )
+        r = cur.fetchone()
+
+    if not r:
+        return None
+
+    return {
+        "id": int(r["id"]),
+        "employeeId": r["employee_id"] or "guest",
+        "employeeName": r["employee_name"] or "게스트",
+        "employeeTeam": r["employee_team"] or "",
+        "department": r["department"],
+        "userQuery": r["user_query"],
+        "content": r["content"],
+        "status": r["status"],
+        "createdAt": int(r["created_at"]),
+    }
+
+def update_inquiry_status(inquiry_id: int, new_status: str) -> bool:
+    """
+    문의 상태 업데이트
+
+    Args:
+        inquiry_id: 문의 ID
+        new_status: 새 상태 ('pending' | 'completed')
+
+    Returns:
+        성공 여부
+    """
+    if new_status not in ["pending", "completed"]:
+        return False
+
+    try:
+        with get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE inquiries SET status = ? WHERE id = ?",
+                (new_status, int(inquiry_id)),
+            )
+            return cur.rowcount > 0
+    except Exception as e:
+        print(f"문의 상태 업데이트 실패: {e}")
+        return False

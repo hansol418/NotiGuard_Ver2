@@ -46,6 +46,11 @@ st.session_state.setdefault("target_selected_teams", set())
 # 예약 전송 시간(라디오) 상태값
 st.session_state.setdefault("popup_expected_send_time", "오전 10시")
 
+# 문의관리 상태
+st.session_state.setdefault("selected_inquiry_id", None)
+st.session_state.setdefault("inquiry_filter_status", "전체")
+st.session_state.setdefault("inquiry_filter_dept", "전체")
+
 apply_portal_theme(hide_pages_sidebar_nav=True, hide_sidebar=False, active_menu=st.session_state.admin_menu)
 render_floating_widget(img_path="assets/chatimg_r.png")
 
@@ -497,6 +502,174 @@ elif menu == "수정":
                 if st.button("취소", use_container_width=True, key="edit_cancel"):
                     on_menu_change("게시판")
                     st.rerun()
+
+elif menu == "문의관리":
+    from core.config import DEPARTMENT_EMAILS
+
+    def _clear_inquiry_selection():
+        if "inquiry_table" in st.session_state:
+            try:
+                st.session_state.inquiry_table["selection"]["rows"] = []
+            except Exception:
+                pass
+
+    if st.session_state.selected_inquiry_id:
+        # 문의 상세 보기
+        st.subheader("문의 상세")
+        inquiry_id = int(st.session_state.selected_inquiry_id)
+        inquiry = service.get_inquiry_by_id(inquiry_id)
+
+        box = st.container(border=True)
+        with box:
+            if not inquiry:
+                st.error("문의를 찾을 수 없습니다.")
+            else:
+                # 상태 배지
+                status_badge = "🟢 처리완료" if inquiry["status"] == "completed" else "🔴 대기중"
+                st.markdown(f"### {status_badge}")
+                st.divider()
+
+                # 문의자 정보
+                st.markdown("**📋 문의자 정보**")
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    st.caption("이름")
+                    st.write(inquiry["employeeName"])
+                with col2:
+                    st.caption("직원 ID")
+                    st.write(inquiry["employeeId"])
+                with col3:
+                    st.caption("소속")
+                    st.write(inquiry["employeeTeam"] or "N/A")
+
+                st.divider()
+
+                # 문의 내용
+                st.markdown("**💬 원본 질문**")
+                st.info(inquiry["userQuery"])
+
+                st.markdown("**📧 문의 대상 부서**")
+                st.write(inquiry["department"])
+
+                st.markdown("**📝 문의 내용**")
+                content_box = st.container(border=True, height=300)
+                with content_box:
+                    st.write(inquiry["content"])
+
+                st.caption(f"접수일시: {fmt_dt(inquiry['createdAt'])}")
+
+        # 버튼
+        col1, col2, col3 = st.columns([2, 2, 2])
+        with col1:
+            if st.button("목록으로", type="primary", use_container_width=True, key="inquiry_back"):
+                st.session_state.selected_inquiry_id = None
+                _clear_inquiry_selection()
+                st.rerun()
+
+        with col2:
+            if inquiry and inquiry["status"] == "pending":
+                if st.button("✅ 처리완료로 변경", use_container_width=True, key="inquiry_complete"):
+                    if service.update_inquiry_status(inquiry_id, "completed"):
+                        st.success("처리완료로 변경되었습니다.")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("상태 변경 실패")
+
+        with col3:
+            if inquiry and inquiry["status"] == "completed":
+                if st.button("🔄 대기중으로 변경", use_container_width=True, key="inquiry_pending"):
+                    if service.update_inquiry_status(inquiry_id, "pending"):
+                        st.success("대기중으로 변경되었습니다.")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("상태 변경 실패")
+
+    else:
+        # 문의 목록
+        st.subheader("📧 문의관리")
+
+        # 필터
+        filter_col1, filter_col2, filter_col3 = st.columns([2, 2, 4])
+        with filter_col1:
+            status_filter = st.selectbox(
+                "상태",
+                ["전체", "대기중", "처리완료"],
+                key="inquiry_status_select"
+            )
+            # 매핑
+            status_map = {
+                "전체": None,
+                "대기중": "pending",
+                "처리완료": "completed"
+            }
+            actual_status = status_map[status_filter]
+
+        with filter_col2:
+            dept_options = ["전체"] + list(DEPARTMENT_EMAILS.keys())
+            dept_filter = st.selectbox(
+                "부서",
+                dept_options,
+                key="inquiry_dept_select"
+            )
+            actual_dept = None if dept_filter == "전체" else dept_filter
+
+        # 목록 조회
+        inquiries = service.list_inquiries(status=actual_status, department=actual_dept)
+
+        box = st.container(border=True)
+        with box:
+            st.markdown("**접수된 문의 목록**")
+
+            if not inquiries:
+                st.info("접수된 문의가 없습니다.")
+            else:
+                # 통계
+                total = len(inquiries)
+                pending = sum(1 for i in inquiries if i["status"] == "pending")
+                completed = total - pending
+
+                stat_col1, stat_col2, stat_col3 = st.columns([1, 1, 1])
+                with stat_col1:
+                    st.metric("전체", f"{total}건")
+                with stat_col2:
+                    st.metric("대기중", f"{pending}건", delta=None if pending == 0 else f"{pending}")
+                with stat_col3:
+                    st.metric("처리완료", f"{completed}건")
+
+                st.divider()
+
+                # 테이블
+                table_rows = []
+                for inq in inquiries:
+                    status_label = "처리완료" if inq["status"] == "completed" else "대기중"
+                    table_rows.append({
+                        "번호": inq["id"],
+                        "상태": status_label,
+                        "부서": inq["department"],
+                        "문의자": inq["employeeName"],
+                        "질문": inq["userQuery"][:50] + "..." if len(inq["userQuery"]) > 50 else inq["userQuery"],
+                        "접수일시": fmt_dt(inq["createdAt"]),
+                    })
+
+                event = st.dataframe(
+                    table_rows,
+                    width="stretch",
+                    hide_index=True,
+                    key="inquiry_table",
+                    on_select="rerun",
+                    selection_mode="single-row",
+                )
+
+                try:
+                    if event is not None and event.selection.rows:
+                        row_idx = event.selection.rows[0]
+                        clicked_inquiry_id = int(table_rows[row_idx]["번호"])
+                        st.session_state.selected_inquiry_id = clicked_inquiry_id
+                        st.rerun()
+                except Exception:
+                    pass
 
 # -------------------------
 # 챗봇 모달
