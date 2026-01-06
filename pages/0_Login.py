@@ -45,69 +45,70 @@ st.markdown(
 def login_modal():
     st.caption("아이디/비밀번호로 로그인 (관리자: admin, 직원: HS001~HS003)")
     
-    # 로그인 처리 함수
-    def handle_login():
-        login_id = st.session_state.get("login_id_input", "").strip()
-        pw = st.session_state.get("pw_input", "").strip()
-        
-        # 아이디와 비밀번호가 모두 입력되었을 때만 로그인 시도
-        if not login_id or not pw:
-            return
-        
-        info = service.login_account(login_id, pw)
-        if not info:
-            st.session_state.login_error = "로그인 정보가 올바르지 않습니다."
-            return
-        
-        st.session_state.logged_in = True
-        st.session_state.role = info["role"]
-        st.session_state.login_error = None
-        
-        if info["role"] == "ADMIN":
-            st.session_state.employee_id = None
-            st.session_state.employee_info = None
-            st.session_state._login_modal_open = False
-            st.switch_page("pages/admin.py")
-        else:
-            emp = info["employee"]
-            st.session_state.employee_id = emp["employeeId"]
-            st.session_state.employee_info = emp
-            st.session_state._login_modal_open = False
-            st.switch_page("pages/employee.py")
-    
     # 초기화
     st.session_state.setdefault("login_error", None)
-
-    login_id = st.text_input(
-        "아이디",
-        value="",
-        placeholder="아이디 입력",
-        key="login_id_input",
-    )
-    pw = st.text_input(
-        "비밀번호",
-        value="",
-        type="password",
-        placeholder="패스워드 입력 후 Enter",
-        key="pw_input",
-        on_change=handle_login,  # 엔터키 누르면 자동 로그인
-    )
     
     # 에러 메시지 표시
     if st.session_state.login_error:
         st.error(st.session_state.login_error)
-
-    c1, c2 = st.columns([1, 1], gap="small")
-    with c1:
-        if st.button("로그인", type="primary", use_container_width=True):
-            handle_login()
-
-    with c2:
-        if st.button("초기화", use_container_width=True):
-            st.session_state["login_id_input"] = ""
-            st.session_state["pw_input"] = ""
-            st.session_state.login_error = None
-            st.rerun()
+    
+    # Form 사용으로 엔터키 지원
+    with st.form(key="login_form", clear_on_submit=False):
+        login_id = st.text_input(
+            "아이디",
+            value="",
+            placeholder="아이디 입력",
+            key="login_id_input",
+        )
+        pw = st.text_input(
+            "비밀번호",
+            value="",
+            type="password",
+            placeholder="패스워드 입력 후 Enter",
+            key="pw_input",
+        )
+        
+        col1, col2 = st.columns([1, 1], gap="small")
+        
+        with col1:
+            submit = st.form_submit_button("로그인", type="primary", use_container_width=True)
+        
+        with col2:
+            if st.form_submit_button("초기화", use_container_width=True):
+                st.session_state["login_id_input"] = ""
+                st.session_state["pw_input"] = ""
+                st.session_state.login_error = None
+                st.rerun()
+        
+        # 로그인 처리
+        if submit:
+            login_id = login_id.strip()
+            pw = pw.strip()
+            
+            if not login_id or not pw:
+                st.session_state.login_error = "아이디와 비밀번호를 입력해주세요."
+                st.rerun()
+            else:
+                info = service.login_account(login_id, pw)
+                if not info:
+                    st.session_state.login_error = "로그인 정보가 올바르지 않습니다."
+                    st.rerun()
+                else:
+                    st.session_state.logged_in = True
+                    st.session_state.role = info["role"]
+                    st.session_state.login_error = None
+                    
+                    if info["role"] == "ADMIN":
+                        st.session_state.employee_id = None
+                        st.session_state.employee_info = None
+                        st.session_state._login_modal_open = False
+                        st.switch_page("pages/admin.py")
+                    else:
+                        emp = info["employee"]
+                        st.session_state.employee_id = emp["employeeId"]
+                        st.session_state.employee_info = emp
+                        st.session_state._login_modal_open = False
+                        st.switch_page("pages/employee.py")
 
 
 # 페이지 로드시 모달을 “자동”으로 한번 띄우기

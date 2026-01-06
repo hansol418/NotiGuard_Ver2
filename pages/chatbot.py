@@ -28,7 +28,12 @@ if not st.session_state.logged_in:
 # 메뉴 변경 핸들러
 # -------------------------
 def on_menu_change(new_menu: str):
-    st.session_state.emp_menu = new_menu
+    if st.session_state.role == "ADMIN":
+        st.session_state.admin_menu = new_menu
+        st.switch_page("pages/admin.py")
+    else:
+        st.session_state.emp_menu = new_menu
+        st.switch_page("pages/employee.py")
 
 # -------------------------
 # 상태값
@@ -46,7 +51,24 @@ apply_portal_theme(
 
 portal_sidebar(role=st.session_state.role, active_menu="챗봇", on_menu_change=on_menu_change)
 render_topbar("전사 Portal")
-# 챗봇 페이지에서는 플로팅 위젯 불필요 (이미 챗봇 페이지이므로)
+
+# 챗봇 페이지에서는 플로팅 위젯 제거 (DOM에 남아있는 경우 삭제)
+import streamlit.components.v1 as components
+components.html(
+    """
+    <script>
+    (function() {
+        try {
+            const widget = window.parent.document.getElementById('floating-chatbot-widget');
+            if (widget) {
+                widget.remove();
+            }
+        } catch(e) {}
+    })();
+    </script>
+    """,
+    height=0
+)
 
 # -------------------------
 # 챗봇 UI
