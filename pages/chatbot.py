@@ -5,7 +5,6 @@ from core.layout import (
     apply_portal_theme,
     render_topbar,
     portal_sidebar,
-    render_floating_widget,
 )
 from core.chatbot_engine import ChatbotEngine
 from core.config import DEPARTMENT_EMAILS, ADMIN_EMAIL
@@ -22,7 +21,7 @@ st.session_state.setdefault("role", None)
 st.session_state.setdefault("employee_id", None)
 st.session_state.setdefault("employee_info", None)
 
-if (not st.session_state.logged_in) or (st.session_state.role != "EMPLOYEE"):
+if not st.session_state.logged_in:
     st.switch_page("pages/0_Login.py")
 
 # -------------------------
@@ -45,9 +44,9 @@ apply_portal_theme(
     active_menu="챗봇",
 )
 
-portal_sidebar(role="EMPLOYEE", active_menu="챗봇", on_menu_change=on_menu_change)
+portal_sidebar(role=st.session_state.role, active_menu="챗봇", on_menu_change=on_menu_change)
 render_topbar("전사 Portal")
-render_floating_widget(img_path="assets/chatimg_r.png")
+# 챗봇 페이지에서는 플로팅 위젯 불필요 (이미 챗봇 페이지이므로)
 
 # -------------------------
 # 챗봇 UI
@@ -58,9 +57,12 @@ st.session_state.setdefault("chatbot_sessions", {})  # {session_id: {name, messa
 st.session_state.setdefault("current_session_id", None)
 st.session_state.setdefault("session_counter", 0)
 
-# 엔진 초기화
-employee_id = st.session_state.get("employee_id", "guest")
-engine = ChatbotEngine(user_id=employee_id)
+# 엔진 초기화 - 관리자는 "admin", 직원은 employee_id 사용
+if st.session_state.role == "ADMIN":
+    user_id = "admin"
+else:
+    user_id = st.session_state.get("employee_id", "guest")
+engine = ChatbotEngine(user_id=user_id)
 
 # 대화 히스토리 관리 함수
 def create_new_session():
@@ -155,7 +157,7 @@ def email_dialog(user_query: str):
                 time.sleep(0.5)
             
             # DB 저장
-            save_success = service.save_inquiry(employee_id, target_dept, user_query, content)
+            save_success = service.save_inquiry(user_id, target_dept, user_query, content)
             
             if success:
                 st.success(f"✅ 전송 완료! {target_dept} 담당자에게 문의 내용이 전달되었습니다.")
@@ -279,10 +281,14 @@ with col_chat:
                         with st.spinner("답변 생성 중..."):
                             result = engine.ask(question)
                             response = result["response"]
+                            notice_refs = result.get("notice_refs", [])
+                            notice_details = result.get("notice_details", [])
                             
                             current_session["messages"].append({
                                 "role": "assistant",
-                                "content": response
+                                "content": response,
+                                "notice_refs": notice_refs,
+                                "notice_details": notice_details
                             })
                         
                         st.rerun()
@@ -303,19 +309,66 @@ with col_chat:
             with st.spinner("답변 생성 중..."):
                 result = engine.ask(prompt)
                 response = result["response"]
+                notice_refs = result.get("notice_refs", [])
+                notice_details = result.get("notice_details", [])
                 
                 current_session["messages"].append({
                     "role": "assistant",
-                    "content": response
+                    "content": response,
+                    "notice_refs": notice_refs,
+                    "notice_details": notice_details
                 })
             
             st.rerun()
         
         # 채팅 메시지 표시 (입력창 아래, border 없음)
         st.markdown("")  # 약간의 여백
-        for msg in current_session["messages"]:
+        for msg_idx, msg in enumerate(current_session["messages"]):
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
+                
+                # 어시스턴트 메시지에 참조 공지 표시
+                if msg["role"] == "assistant" and msg.get("notice_details"):
+                    st.markdown("---")
+                    notice_details = msg.get("notice_details", [])
+                    
+                    with st.expander(f"📚 참고한 공지사항 ({len(notice_details)}개)", expanded=False):
+                        for i, detail in enumerate(notice_details):
+                            ref_id = detail["post_id"]
+                            title = detail["title"]
+                            
+                            # 공지 상세 정보 가져오기
+                            post_info = service.get_post_by_id(ref_id)
+                            
+                            if post_info:
+                                with st.container():
+                                    st.markdown(f"**{i+1}. {title}**")
+                                    
+                                    # 작성일 표시
+                                    from datetime import datetime
+                                    ts = post_info.get('timestamp', 0)
+                                    if ts:
+                                        dt = datetime.fromtimestamp(ts / 1000.0)
+                                        date_str = dt.strftime("%Y-%m-%d")
+                                        st.caption(f"📅 작성일: {date_str}")
+                                    
+                                    # 공지 내용 표시 (접을 수 있게)
+                                    content = post_info.get('content', '')
+                                    if len(content) > 200:
+                                        with st.expander("원문 보기", expanded=False):
+                                            st.text(content)
+                                    else:
+                                        st.text(content)
+                                    
+                                    # 게시판에서 보기 버튼
+                                    if st.button(f"📋 게시판에서 보기", key=f"view_ref_{msg_idx}_{i}_{ref_id}", use_container_width=True):
+                                        st.session_state.selected_post_id = ref_id
+                                        st.session_state.emp_menu = "게시판"
+                                        st.switch_page("pages/employee.py")
+                                    
+                                    if i < len(notice_details) - 1:
+                                        st.divider()
+
         
         # 하단 버튼
         col1, col2 = st.columns([1, 1])
