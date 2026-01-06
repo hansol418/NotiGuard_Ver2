@@ -430,6 +430,7 @@ def render_chatbot_modal(user_id: str):
 
 
 def portal_sidebar(*, role: str, active_menu: str, on_menu_change):
+    st.sidebar.image("assets/logo.png", use_container_width=True)
     st.sidebar.markdown("## HS HYOSEONG")
 
     # 메뉴 구성 (챗봇, 문의관리 추가)
