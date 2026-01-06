@@ -6,7 +6,7 @@ enableXsrfProtection = true
 [browser]
 gatherUsageStats = false
 serverAddress = "localhost"
-serverPort = 3000
+serverPort = 8501
 
 [client]
 showErrorDetails = true
