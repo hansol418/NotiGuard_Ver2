@@ -312,11 +312,12 @@ def _add_notices_columns_sqlite(conn):
 def _init_postgres():
     """PostgreSQL 초기화"""
     schema_path = Path("sql/schema_postgres.sql")
-    if not schema_path.exists():
-        print(f"⚠️ {schema_path} 파일이 없습니다. 수동으로 DB 초기화가 필요합니다.")
-        print("Railway 배포 시 'python init_railway_db.py'를 실행하세요.")
-        return
-
+    
+    # 스키마 파일이 없어도 코드 내 하드코딩된 테이블 생성은 진행해야 함
+    has_schema_file = schema_path.exists()
+    if not has_schema_file:
+        print(f"⚠️ {schema_path} 파일이 없습니다. 기본 스키마 파일 실행을 건너뜁니다.")
+    
     try:
         url = urlparse.urlparse(DATABASE_URL)
         conn = psycopg2.connect(
@@ -332,9 +333,13 @@ def _init_postgres():
         # 1. 스키마 및 테이블 생성 (구조)
         # ---------------------------------------
         
-        # 1-1) 기본 스키마 (파일)
-        schema_sql = schema_path.read_text(encoding="utf-8")
-        cursor.execute(schema_sql)
+        # 1-1) 기본 스키마 (파일 있으면 실행)
+        if has_schema_file:
+            try:
+                schema_sql = schema_path.read_text(encoding="utf-8")
+                cursor.execute(schema_sql)
+            except Exception as e:
+                print(f"⚠️ 스키마 파일 실행 중 오류 (무시됨): {e}")
 
         # 1-2) 챗봇 세션/메시지 및 추가 컬럼 (PostgreSQL)
         # chat_logs (통계 로그용)
