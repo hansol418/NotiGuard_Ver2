@@ -5,6 +5,7 @@ from core.layout import (
     apply_portal_theme,
     render_topbar,
     portal_sidebar,
+    remove_floating_widget,
 )
 from core.chatbot_engine import ChatbotEngine
 from core.config import DEPARTMENT_EMAILS, ADMIN_EMAIL
@@ -53,22 +54,7 @@ portal_sidebar(role=st.session_state.role, active_menu="챗봇", on_menu_change=
 render_topbar("전사 Portal")
 
 # 챗봇 페이지에서는 플로팅 위젯 제거 (DOM에 남아있는 경우 삭제)
-import streamlit.components.v1 as components
-components.html(
-    """
-    <script>
-    (function() {
-        try {
-            const widget = window.parent.document.getElementById('floating-chatbot-widget');
-            if (widget) {
-                widget.remove();
-            }
-        } catch(e) {}
-    })();
-    </script>
-    """,
-    height=0
-)
+remove_floating_widget()
 
 # -------------------------
 # 챗봇 UI

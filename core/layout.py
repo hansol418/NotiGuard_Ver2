@@ -258,6 +258,27 @@ def render_floating_widget(*, img_path: str, width_px: int = 200, bottom_px: int
     )
 
 
+def remove_floating_widget():
+    """
+    강제로 플로팅 위젯 및 말풍선 제거 (챗봇 페이지 등에서 사용)
+    """
+    import streamlit.components.v1 as components
+    components.html(
+        """
+        <script>
+        (function() {
+            const doc = window.parent.document;
+            const widget = doc.getElementById('floating-chatbot-widget');
+            if (widget) widget.remove();
+            const bubble = doc.getElementById('chatbot-bubble');
+            if (bubble) bubble.remove();
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+
 def render_topbar(title: str):
     st.markdown(
         f"""
