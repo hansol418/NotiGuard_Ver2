@@ -349,151 +349,138 @@ def render_chatbot_modal(user_id: str):
     챗봇 모달 다이얼로그
     - 플로팅 위젯 또는 사이드바에서 호출
     """
-    try:
-        import streamlit.components.v1 as components
-        from core.chatbot_engine import ChatbotEngine
+    import streamlit.components.v1 as components
+    from core.chatbot_engine import ChatbotEngine
 
-        # 채팅 히스토리 초기화
-        st.session_state.setdefault("modal_chat_messages", [])
+    # 채팅 히스토리 초기화
+    st.session_state.setdefault("modal_chat_messages", [])
 
-        # 엔진 초기화
-        engine = ChatbotEngine(user_id=user_id)
+    # 엔진 초기화
+    engine = ChatbotEngine(user_id=user_id)
 
-        # 챗봇 모달 전용 스타일 (JS로 고유 ID 추가)
-        components.html(
-            """
-            <script>
-            (function () {
-              const doc = window.parent.document;
-              const id = "chatbot-modal-style";
-              if (doc.getElementById(id)) return;
+    # 챗봇 모달 전용 스타일 (JS로 고유 ID 추가)
+    components.html(
+        """
+        <script>
+        (function () {
+          const doc = window.parent.document;
+          const id = "chatbot-modal-style";
+          if (doc.getElementById(id)) return;
 
-              // 챗봇 모달에 고유 클래스 추가
-              const dialogs = doc.querySelectorAll('div[role="dialog"]');
-              dialogs.forEach(dlg => {
-                const title = dlg.querySelector('h2');
-                if (title && title.textContent.includes('노티가드 AI 챗봇')) {
-                  dlg.classList.add('chatbot-modal');
-                }
-              });
+          // 챗봇 모달에 고유 클래스 추가
+          const dialogs = doc.querySelectorAll('div[role="dialog"]');
+          dialogs.forEach(dlg => {
+            const title = dlg.querySelector('h2');
+            if (title && title.textContent.includes('노티가드 AI 챗봇')) {
+              dlg.classList.add('chatbot-modal');
+            }
+          });
 
-              // 챗봇 모달 전용 스타일
-              const style = doc.createElement("style");
-              style.id = id;
-              style.innerHTML = `
-                div[role="dialog"].chatbot-modal > div {
-                  width: min(700px, 90vw) !important;
-                  max-width: min(700px, 90vw) !important;
-                  max-height: 85vh !important;
-                }
+          // 챗봇 모달 전용 스타일
+          const style = doc.createElement("style");
+          style.id = id;
+          style.innerHTML = `
+            div[role="dialog"].chatbot-modal > div {
+              width: min(700px, 90vw) !important;
+              max-width: min(700px, 90vw) !important;
+              max-height: 85vh !important;
+            }
 
-                /* 챗봇 모달 내부 여백 조정 */
-                div[role="dialog"].chatbot-modal .block-container {
-                  padding-left: 1rem !important;
-                  padding-right: 1rem !important;
-                  max-width: 100% !important;
-                }
+            /* 챗봇 모달 내부 여백 조정 */
+            div[role="dialog"].chatbot-modal .block-container {
+              padding-left: 1rem !important;
+              padding-right: 1rem !important;
+              max-width: 100% !important;
+            }
 
-                /* chat_input 너비 조정 */
-                div[role="dialog"].chatbot-modal [data-testid="stChatInput"] {
-                  max-width: 100% !important;
-                }
-              `;
-              doc.head.appendChild(style);
-            })();
-            </script>
-            """,
-            height=0,
-        )
+            /* chat_input 너비 조정 */
+            div[role="dialog"].chatbot-modal [data-testid="stChatInput"] {
+              max-width: 100% !important;
+            }
+          `;
+          doc.head.appendChild(style);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
-        st.markdown("### 🤖 노티가드 AI 챗봇")
-        st.caption("효성전기 공지사항에 대해 무엇이든 물어보세요!")
+    st.markdown("### 🤖 노티가드 AI 챗봇")
+    st.caption("효성전기 공지사항에 대해 무엇이든 물어보세요!")
 
-        # 초기 질문 처리 (팝업에서 넘어온 경우)
-        initial_query = st.session_state.get("_chatbot_initial_query")
-        if initial_query and len(st.session_state.modal_chat_messages) == 0:
-            # 자동으로 질문 처리
+    # 초기 질문 처리 (팝업에서 넘어온 경우)
+    initial_query = st.session_state.get("_chatbot_initial_query")
+    if initial_query and len(st.session_state.modal_chat_messages) == 0:
+        # 자동으로 질문 처리
+        st.session_state.modal_chat_messages.append({
+            "role": "user",
+            "content": initial_query
+        })
+
+        # 챗봇 응답 생성
+        with st.spinner("답변 생성 중..."):
+            result = engine.ask(initial_query)
+            response = result["response"]
+
             st.session_state.modal_chat_messages.append({
-                "role": "user",
-                "content": initial_query
+                "role": "assistant",
+                "content": response
             })
 
-            # 챗봇 응답 생성
-            with st.spinner("답변 생성 중..."):
-                result = engine.ask(initial_query)
-                response = result["response"]
+        # 초기 질문 초기화 (재사용 방지)
+        st.session_state["_chatbot_initial_query"] = None
 
-                st.session_state.modal_chat_messages.append({
-                    "role": "assistant",
-                    "content": response
-                })
+    # 채팅 히스토리 표시 (높이 축소)
+    chat_container = st.container(height=350)
+    with chat_container:
+        if len(st.session_state.modal_chat_messages) == 0:
+            st.info("👋 안녕하세요! 저는 노티가드입니다.\n\n효성전기의 공지사항에 대해 궁금한 점을 물어보세요!")
 
-            # 초기 질문 초기화 (재사용 방지)
-            st.session_state["_chatbot_initial_query"] = None
+        for msg in st.session_state.modal_chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-        # 채팅 히스토리 표시 (높이 축소)
-        chat_container = st.container(height=350)
+    # 입력창
+    prompt = st.chat_input("예: 이번 주 안전교육 일정 알려줘", key="modal_chat_input")
+
+    if prompt:
+        # 사용자 메시지 추가
+        st.session_state.modal_chat_messages.append({
+            "role": "user",
+            "content": prompt
+        })
+
+        # 챗봇 응답
+        with st.spinner("답변 생성 중..."):
+            result = engine.ask(prompt)
+            response = result["response"]
+
+            # 봇 메시지 추가
+            st.session_state.modal_chat_messages.append({
+                "role": "assistant",
+                "content": response
+            })
+
+        # 새 메시지를 즉시 표시
         with chat_container:
-            if len(st.session_state.modal_chat_messages) == 0:
-                st.info("👋 안녕하세요! 저는 노티가드입니다.\n\n효성전기의 공지사항에 대해 궁금한 점을 물어보세요!")
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            with st.chat_message("assistant"):
+                st.markdown(response)
 
-            for msg in st.session_state.modal_chat_messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-        # 입력창 (st.chat_input 대신 안정적인 form 사용)
-        with st.form(key="chatbot_form", clear_on_submit=True):
-            f_col1, f_col2 = st.columns([4, 1], gap="small")
-            with f_col1:
-                prompt = st.text_input(
-                    "질문", 
-                    placeholder="예: 이번 주 안전교육 일정 알려줘", 
-                    label_visibility="collapsed",
-                    key="modal_chat_text"
-                )
-            with f_col2:
-                submitted = st.form_submit_button("전송", type="primary", use_container_width=True)
-
-        if submitted and prompt:
-            # 사용자 메시지 추가
-            st.session_state.modal_chat_messages.append({
-                "role": "user",
-                "content": prompt
-            })
-
-            # 챗봇 응답
-            with st.spinner("답변 생성 중..."):
-                result = engine.ask(prompt)
-                response = result["response"]
-
-                # 봇 메시지 추가
-                st.session_state.modal_chat_messages.append({
-                    "role": "assistant",
-                    "content": response
-                })
-                
+    # 하단 버튼
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 대화 초기화", use_container_width=True, key="modal_reset"):
+            st.session_state.modal_chat_messages = []
+            st.session_state["_chatbot_initial_query"] = None
             st.rerun()
-
-        # 하단 버튼
-        st.divider()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 대화 초기화", use_container_width=True, key="modal_reset"):
-                st.session_state.modal_chat_messages = []
-                st.session_state["_chatbot_initial_query"] = None
-                st.rerun()
-        with col2:
-            if st.button("📧 담당자 문의", use_container_width=True, key="modal_email"):
-                # 챗봇 페이지로 이동
-                st.session_state._chatbot_modal_open = False
-                st.switch_page("pages/chatbot.py")
-
-    except Exception as e:
-        import traceback
-        st.error(f"챗봇 모달 오류 발생: {e}")
-        st.caption("관리자에게 문의해주세요.")
-        with st.expander("상세 에러 로그"):
-            st.code(traceback.format_exc())
+    with col2:
+        if st.button("📧 담당자 문의", use_container_width=True, key="modal_email"):
+            # 챗봇 페이지로 이동
+            st.session_state._chatbot_modal_open = False
+            st.switch_page("pages/chatbot.py")
 
 
 def portal_sidebar(*, role: str, active_menu: str, on_menu_change):
