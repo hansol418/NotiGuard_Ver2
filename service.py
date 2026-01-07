@@ -403,12 +403,22 @@ def get_latest_popup_for_employee(employee_id: str) -> Optional[Dict]:
 
         dept_targets = _parse_csv(p["target_departments"])
         team_targets = _parse_csv(p["target_teams"])
+        
+        # target_users (개별 사용자 타겟팅)
+        target_users = _parse_csv(str(p.get("target_users") or ""))
 
-        # 최종 룰:
-        # 1) 팀 지정 -> 팀 기준
-        # 2) 팀 없음 + 본부 지정 -> 본부 기준
-        # 3) 둘 다 없음 -> 발송 안 함
-        if team_targets:
+        # 1) 유저 지정 -> 유저 매칭 (최우선)
+        # 2) 팀 지정 -> 팀 기준
+        # 3) 팀 없음 + 본부 지정 -> 본부 기준
+        
+        matches = False
+        
+        if target_users:
+            if employee_id in target_users:
+                matches = True
+            else:
+                matches = False
+        elif team_targets:
             matches = (emp["team"] in team_targets)
         elif dept_targets:
             matches = (emp["department"] in dept_targets)
@@ -424,16 +434,16 @@ def get_latest_popup_for_employee(employee_id: str) -> Optional[Dict]:
                 "title": p["title"],
                 "content": p["content"],
                 "ignoreRemaining": emp["ignoreRemaining"],
+                "popupType": p.get("type", "NOTICE") # 타입 추가
             }
 
-            # 이미지가 있으면 같이 내려줌 (없으면 필드 자체가 없어도 됨)
+            # 이미지가 있으면 같이 내려줌
             if img:
                 file_path = img.get("filePath", "")
-                # URL인지 로컬 경로인지 구분하여 올바른 키로 전달
                 if file_path.startswith("http://") or file_path.startswith("https://"):
-                    payload["imageUrl"] = file_path  # R2 URL
+                    payload["imageUrl"] = file_path
                 else:
-                    payload["imagePath"] = file_path  # 로컬 파일 경로
+                    payload["imagePath"] = file_path
 
             return payload
     return None
@@ -576,21 +586,40 @@ def get_inquiry_by_id(inquiry_id: int) -> Optional[Dict]:
         문의 상세 정보
     """
     with get_conn() as conn:
-        cur = conn.execute(
-            """
-            SELECT i.id, i.employee_id, i.department, i.user_query, i.content,
-                   i.status, i.created_at, e.name as employee_name, e.team as employee_team
-            FROM inquiries i
-            LEFT JOIN employees e ON i.employee_id = e.employee_id
-            WHERE i.id = ?
-            """,
-            (int(inquiry_id),),
-        )
-        r = cur.fetchone()
+        try:
+            # answer 컬럼이 있는지 확인하기 어렵지만, 일단 조회 시도
+            # 컬럼이 없을 경우 에러가 날 수 있으므로 예외처리?
+            # 하지만 core/db.py에서 안전하게 추가하도록 했으므로 믿고 조회
+            cur = conn.execute(
+                """
+                SELECT i.id, i.employee_id, i.department, i.user_query, i.content,
+                       i.status, i.created_at, i.answer, i.answered_at,
+                       e.name as employee_name, e.team as employee_team
+                FROM inquiries i
+                LEFT JOIN employees e ON i.employee_id = e.employee_id
+                WHERE i.id = ?
+                """,
+                (int(inquiry_id),),
+            )
+            r = cur.fetchone()
+        except Exception:
+            # 컬럼이 없어서 에러나는 경우 -> 기존 쿼리로 폴백
+             cur = conn.execute(
+                """
+                SELECT i.id, i.employee_id, i.department, i.user_query, i.content,
+                       i.status, i.created_at, e.name as employee_name, e.team as employee_team
+                FROM inquiries i
+                LEFT JOIN employees e ON i.employee_id = e.employee_id
+                WHERE i.id = ?
+                """,
+                (int(inquiry_id),),
+            )
+             r = cur.fetchone()
 
     if not r:
         return None
 
+    # r이 딕셔너리가 아닐수도? (sqlite3.Row) -> dict access 가능
     return {
         "id": int(r["id"]),
         "employeeId": r["employee_id"] or "guest",
@@ -601,6 +630,8 @@ def get_inquiry_by_id(inquiry_id: int) -> Optional[Dict]:
         "content": r["content"],
         "status": r["status"],
         "createdAt": int(r["created_at"]),
+        "answer": r["answer"] if "answer" in r.keys() else None,
+        "answeredAt": int(r["answered_at"] or 0) if "answered_at" in r.keys() else 0,
     }
 
 def update_inquiry_status(inquiry_id: int, new_status: str) -> bool:
@@ -858,3 +889,52 @@ def get_chatbot_keyword_stats() -> Dict[str, Dict[str, int]]:
             
     # Counter 객체를 dict로 변환하여 반환
     return {k: dict(v) for k, v in stats.items()}
+
+def create_user_alarm(target_user_id: str, title: str, content: str, author: str = "SYSTEM") -> bool:
+    """사용자에게 알림(ALARM 타입 팝업) 발송"""
+    ts = now_ms()
+    popup_id = ts
+    
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO popups(popup_id, post_id, title, content, target_users, created_at, type)
+                VALUES(?, 0, ?, ?, ?, ?, 'ALARM')
+                """,
+                (popup_id, title, content, target_user_id, ts),
+            )
+        return True
+    except Exception as e:
+        print(f"알림 발송 실패: {e}")
+        return False
+
+def answer_inquiry(inquiry_id: int, answer: str, admin_id: str) -> bool:
+    """문의 답변 및 알림 발송"""
+    ts = now_ms()
+    
+    try:
+        with get_conn() as conn:
+            # 1. 문의 업데이트
+            conn.execute(
+                "UPDATE inquiries SET answer = ?, answered_at = ?, answerer_id = ?, status = 'completed' WHERE id = ?",
+                (answer, ts, admin_id, int(inquiry_id))
+            )
+
+            # 2. 문의자 정보 조회
+            cur = conn.execute("SELECT employee_id, user_query FROM inquiries WHERE id = ?", (int(inquiry_id),))
+            row = cur.fetchone()
+            
+            if row:
+                emp_id = row['employee_id']
+                uq = row['user_query']
+                q_summary = uq[:30] + "..." if len(uq) > 30 else uq
+                
+                content_md = f"**[문의 내용]**\n{q_summary}\n\n**[답변 내용]**\n{answer}"
+                
+                create_user_alarm(emp_id, "문의 답변 알림", content_md, author=admin_id)
+                
+        return True
+    except Exception as e:
+        print(f"답변 등록 실패: {e}")
+        return False

@@ -431,53 +431,65 @@ def popup_banner_dialog(payload: dict):
     # 1행: 확인함 / 나중에 확인
     # 2행: 요약 보기 / 챗봇으로 바로가기
     
-    r1_c1, r1_c2 = st.columns(2, gap="small")
-    r2_c1, r2_c2 = st.columns(2, gap="small")
-
-    # [1행 1열] 버튼 1: 확인함
-    with r1_c1:
+    popup_type = payload.get("popupType", "NOTICE")
+    
+    if popup_type == "ALARM":
         st.markdown('<div class="hs-gap hs-btn-confirm">', unsafe_allow_html=True)
-        if st.button("1. 확인함", use_container_width=True, key=f"popup_confirm_{popup_id}"):
-            st.session_state._popup_confirm_pending = True
-            st.session_state._popup_confirm_pending_id = popup_id
-            st.rerun()
+        # 확인 버튼 하나만 (전체 너비)
+        if st.button("확인함", type="primary", use_container_width=True, key=f"popup_alarm_ok_{popup_id}"):
+            service.confirm_popup_action(emp_id, popup_id)
+            close_popup_now_hard()
         st.markdown("</div>", unsafe_allow_html=True)
-
-    # [1행 2열] 버튼 2: 나중에 확인
-    with r1_c2:
-        st.markdown('<div class="hs-gap hs-btn-later">', unsafe_allow_html=True)
-        # 텍스트 길이 줄임: "남은 횟수:" -> ""
-        btn_label = f"2. 나중에 확인 ({remaining}회)"
-        if st.button(btn_label, use_container_width=True, key=f"popup_later_{popup_id}"):
-            res = service.ignore_popup_action(emp_id, popup_id)
-            if not res.get("ok"):
-                st.error("횟수 초과")
-            else:
-                st.session_state.employee_info = service.get_employee_info(emp_id)
-                close_popup_now_hard()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # [2행 1열] 버튼 3: 요약 보기
-    with r2_c1:
-        st.markdown('<div class="hs-gap hs-btn-summary">', unsafe_allow_html=True)
-        if st.button("3. 요약 보기", use_container_width=True, key=f"popup_summary_{popup_id}"):
-            st.session_state["_popup_summary_modal_open"] = True
-            st.session_state["_popup_summary_payload"] = {
-                "popup_id": popup_id,
-                "title": title,
-                "content": content,
-            }
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # [2행 2열] 버튼 4: 챗봇으로 바로가기
-    with r2_c2:
-        st.markdown('<div class="hs-gap hs-btn-chat">', unsafe_allow_html=True)
-        if st.button("4. 챗봇 질문", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
-            service.log_chatbot_move(emp_id, popup_id)
-
-            # 챗봇 모달에 전달할 초기 질문 설정
-            st.session_state["_chatbot_initial_query"] = f"{title}에 대해 알려줘"
+        
+    else:
+        # 기존 4버튼 로직
+        r1_c1, r1_c2 = st.columns(2, gap="small")
+        r2_c1, r2_c2 = st.columns(2, gap="small")
+    
+        # [1행 1열] 버튼 1: 확인함
+        with r1_c1:
+            st.markdown('<div class="hs-gap hs-btn-confirm">', unsafe_allow_html=True)
+            if st.button("1. 확인함", use_container_width=True, key=f"popup_confirm_{popup_id}"):
+                st.session_state._popup_confirm_pending = True
+                st.session_state._popup_confirm_pending_id = popup_id
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+        # [1행 2열] 버튼 2: 나중에 확인
+        with r1_c2:
+            st.markdown('<div class="hs-gap hs-btn-later">', unsafe_allow_html=True)
+            # 텍스트 길이 줄임: "남은 횟수:" -> ""
+            btn_label = f"2. 나중에 확인 ({remaining}회)"
+            if st.button(btn_label, use_container_width=True, key=f"popup_later_{popup_id}"):
+                res = service.ignore_popup_action(emp_id, popup_id)
+                if not res.get("ok"):
+                    st.error("횟수 초과")
+                else:
+                    st.session_state.employee_info = service.get_employee_info(emp_id)
+                    close_popup_now_hard()
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+        # [2행 1열] 버튼 3: 요약 보기
+        with r2_c1:
+            st.markdown('<div class="hs-gap hs-btn-summary">', unsafe_allow_html=True)
+            if st.button("3. 요약 보기", use_container_width=True, key=f"popup_summary_{popup_id}"):
+                st.session_state["_popup_summary_modal_open"] = True
+                st.session_state["_popup_summary_payload"] = {
+                    "popup_id": popup_id,
+                    "title": title,
+                    "content": content,
+                }
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+        # [2행 2열] 버튼 4: 챗봇으로 바로가기
+        with r2_c2:
+            st.markdown('<div class="hs-gap hs-btn-chat">', unsafe_allow_html=True)
+            if st.button("4. 챗봇 질문", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
+                service.log_chatbot_move(emp_id, popup_id)
+    
+                # 챗봇 모달에 전달할 초기 질문 설정
+                st.session_state["_chatbot_initial_query"] = f"{title}에 대해 알려줘"
 
             # 팝업 닫기
             st.session_state._popup_modal_open = False

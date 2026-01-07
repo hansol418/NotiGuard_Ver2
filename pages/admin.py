@@ -566,6 +566,27 @@ elif menu == "문의관리":
 
                 st.caption(f"접수일시: {fmt_dt(inquiry['createdAt'])}")
 
+                st.divider()
+                st.subheader("📝 문의 회신")
+
+                if inquiry.get("answer"):
+                     st.info(f"**✅ 회신 내용:**\n\n{inquiry['answer']}")
+                     st.caption(f"회신 일시: {fmt_dt(inquiry.get('answeredAt', 0))}")
+                else:
+                     st.warning("아직 회신이 등록되지 않았습니다.")
+                     
+                     answer_input = st.text_area("회신 내용 작성", height=150, placeholder="회신 내용을 입력하세요.")
+                     if st.button("회신하기 (알림 발송)", type="primary", use_container_width=True):
+                         if not answer_input.strip():
+                             st.error("내용을 입력해주세요.")
+                         else:
+                             if service.answer_inquiry(inquiry_id, answer_input, "관리자"):
+                                 st.success("회신이 완료되었습니다.")
+                                 time.sleep(1)
+                                 st.rerun()
+                             else:
+                                 st.error("회신 등록 실패")
+
         # 버튼
         col1, col2, col3 = st.columns([2, 2, 2])
         with col1:

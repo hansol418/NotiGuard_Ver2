@@ -395,6 +395,60 @@ def _init_postgres():
             ALTER TABLE notices ADD COLUMN IF NOT EXISTS date TEXT;
         """)
 
+        # inquiries (1:1 문의) - 기본 구조
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS inquiries (
+                id SERIAL PRIMARY KEY,
+                employee_id TEXT NOT NULL,
+                department TEXT,
+                user_query TEXT NOT NULL,
+                content TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at BIGINT NOT NULL
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_inquiries_emp ON inquiries(employee_id)")
+        conn.commit()
+        
+        # inquiries 컬럼 추가 (안전하게 개별 실행)
+        for sql in [
+            "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answer TEXT",
+            "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answered_at BIGINT",
+            "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answerer_id TEXT"
+        ]:
+            try:
+                cursor.execute(sql)
+                conn.commit()
+            except Exception as e:
+                print(f"⚠️ 컬럼 추가 실패 (무시됨): {e}")
+                conn.rollback()
+
+        # popups 테이블 - 기본 구조
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS popups (
+                popup_id BIGINT PRIMARY KEY,
+                post_id BIGINT,
+                title TEXT,
+                content TEXT,
+                target_departments TEXT,
+                target_teams TEXT,
+                created_at BIGINT
+            )
+        """)
+        conn.commit()
+        
+        # popups 컬럼 추가
+        for sql in [
+            "ALTER TABLE popups ADD COLUMN IF NOT EXISTS target_users TEXT",
+            "ALTER TABLE popups ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'NOTICE'"
+        ]:
+            try:
+                cursor.execute(sql)
+                conn.commit()
+            except Exception as e:
+                print(f"⚠️ 팝업 컬럼 추가 실패 (무시됨): {e}")
+                conn.rollback()
+
         # 구조 변경 사항 즉시 커밋 (데이터 삽입 오류와 격리)
         conn.commit()
 
