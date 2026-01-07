@@ -403,25 +403,12 @@ def get_latest_popup_for_employee(employee_id: str) -> Optional[Dict]:
 
         dept_targets = _parse_csv(p["target_departments"])
         team_targets = _parse_csv(p["target_teams"])
-        
-        # target_users (개별 사용자 타겟팅)
-        # 키가 없을 수 있으므로 get 사용
-        user_targets = _parse_csv(str(p.get("target_users") or ""))
 
         # 최종 룰:
-        # 1) 유저 지정 -> 유저 매칭 (최우선)
-        # 2) 팀 지정 -> 팀 기준
-        # 3) 팀 없음 + 본부 지정 -> 본부 기준
-        # 4) 모두 없음 -> 발송 안 함 (또는 전체? 현재는 안 함)
-        
-        matches = False
-        
-        if user_targets:
-            if employee_id in user_targets:
-                matches = True
-            else:
-                matches = False # 다른 사람 타겟팅임
-        elif team_targets:
+        # 1) 팀 지정 -> 팀 기준
+        # 2) 팀 없음 + 본부 지정 -> 본부 기준
+        # 3) 둘 다 없음 -> 발송 안 함
+        if team_targets:
             matches = (emp["team"] in team_targets)
         elif dept_targets:
             matches = (emp["department"] in dept_targets)
@@ -592,8 +579,7 @@ def get_inquiry_by_id(inquiry_id: int) -> Optional[Dict]:
         cur = conn.execute(
             """
             SELECT i.id, i.employee_id, i.department, i.user_query, i.content,
-                   i.status, i.created_at, i.answer, i.answered_at,
-                   e.name as employee_name, e.team as employee_team
+                   i.status, i.created_at, e.name as employee_name, e.team as employee_team
             FROM inquiries i
             LEFT JOIN employees e ON i.employee_id = e.employee_id
             WHERE i.id = ?
@@ -615,8 +601,6 @@ def get_inquiry_by_id(inquiry_id: int) -> Optional[Dict]:
         "content": r["content"],
         "status": r["status"],
         "createdAt": int(r["created_at"]),
-        "answer": r["answer"],
-        "answeredAt": int(r["answered_at"] or 0),
     }
 
 def update_inquiry_status(inquiry_id: int, new_status: str) -> bool:
@@ -874,52 +858,3 @@ def get_chatbot_keyword_stats() -> Dict[str, Dict[str, int]]:
             
     # Counter 객체를 dict로 변환하여 반환
     return {k: dict(v) for k, v in stats.items()}
-
-def create_user_alarm(target_user_id: str, title: str, content: str, author: str = "SYSTEM") -> bool:
-    """사용자에게 알림(ALARM 타입 팝업) 발송"""
-    ts = now_ms()
-    popup_id = ts
-    
-    try:
-        with get_conn() as conn:
-            conn.execute(
-                """
-                INSERT INTO popups(popup_id, post_id, title, content, target_users, created_at, type)
-                VALUES(?, 0, ?, ?, ?, ?, 'ALARM')
-                """,
-                (popup_id, title, content, target_user_id, ts),
-            )
-        return True
-    except Exception as e:
-        print(f"알림 발송 실패: {e}")
-        return False
-
-def answer_inquiry(inquiry_id: int, answer: str, admin_id: str) -> bool:
-    """문의 답변 및 알림 발송"""
-    ts = now_ms()
-    
-    try:
-        with get_conn() as conn:
-            # 1. 문의 업데이트
-            conn.execute(
-                "UPDATE inquiries SET answer = ?, answered_at = ?, answerer_id = ?, status = 'completed' WHERE id = ?",
-                (answer, ts, admin_id, int(inquiry_id))
-            )
-
-            # 2. 문의자 정보 조회
-            cur = conn.execute("SELECT employee_id, user_query FROM inquiries WHERE id = ?", (int(inquiry_id),))
-            row = cur.fetchone()
-            
-            if row:
-                emp_id = row['employee_id']
-                uq = row['user_query']
-                q_summary = uq[:30] + "..." if len(uq) > 30 else uq
-                
-                content_md = f"**[문의 내용]**\n{q_summary}\n\n**[답변 내용]**\n{answer}"
-                
-                create_user_alarm(emp_id, "문의 답변 알림", content_md, author=admin_id)
-                
-        return True
-    except Exception as e:
-        print(f"답변 등록 실패: {e}")
-        return False
