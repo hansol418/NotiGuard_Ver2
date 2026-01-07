@@ -47,7 +47,7 @@ def login_account(login_id: str, pw: str) -> Optional[Dict]:
     role = acc["role"]
 
     if role == "ADMIN":
-        return {"role": "ADMIN"}
+        return {"role": "ADMIN", "loginId": acc["login_id"]}
 
     if role == "EMPLOYEE":
         emp_id = acc["employee_id"]
@@ -58,7 +58,7 @@ def login_account(login_id: str, pw: str) -> Optional[Dict]:
         if not emp:
             return None
 
-        return {"role": "EMPLOYEE", "employee": emp}
+        return {"role": "EMPLOYEE", "employee": emp, "loginId": acc["login_id"]}
 
     return None
 
