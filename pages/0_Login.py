@@ -45,6 +45,14 @@ st.markdown(
 # --- 중앙 모달: st.dialog 사용 ---
 cookie_manager = stx.CookieManager(key="login_cookie_manager")
 
+# 로그아웃 처리 (다른 페이지에서 넘어온 경우)
+if st.session_state.get("logout_clicked"):
+    cookie_manager.delete("user_token")
+    st.session_state["logout_clicked"] = False
+    import time
+    time.sleep(0.5)
+    st.rerun()
+
 @st.dialog("로그인")
 def login_modal():
     st.caption("아이디/비밀번호로 로그인 (관리자: admin, 직원: HS001~HS003)")
