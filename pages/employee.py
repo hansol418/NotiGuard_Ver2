@@ -628,43 +628,45 @@ elif menu == "게시판":
             if not posts:
                 st.info("등록된 게시글이 없습니다.")
             else:
-                # 테이블 헤더
-                h_col1, h_col2, h_col3, h_col4, h_col5 = st.columns([0.8, 4, 1.5, 2, 1])
-                h_col1.markdown("**:gray[번호]**")
-                h_col2.markdown("**:gray[제목 (클릭하여 확인)]**")
-                h_col3.markdown("**:gray[작성자]**")
-                h_col4.markdown("**:gray[작성일]**")
-                h_col5.markdown("**:gray[조회]**")
-                st.divider()
-
-                # 게시글 목록 반복
+                # DataFrame 변환 및 표시
+                import pandas as pd
+                
+                df_data = []
                 for p in posts:
-                    row_c1, row_c2, row_c3, row_c4, row_c5 = st.columns([0.8, 4, 1.5, 2, 1])
+                    df_data.append({
+                        "번호": p["postId"],
+                        "제목": p["title"],
+                        "작성자": p["author"],
+                        "작성일": fmt_dt(p["timestamp"]),
+                        "조회": p["views"]
+                    })
+                
+                df = pd.DataFrame(df_data)
+                
+                event = st.dataframe(
+                    df,
+                    use_container_width=True,
+                    hide_index=True,
+                    on_select="rerun",
+                    selection_mode="single-row",
+                    key="emp_board_list",
+                    column_config={
+                        "번호": st.column_config.TextColumn(width="small"),
+                        "제목": st.column_config.TextColumn("제목 (클릭하여 확인)", width="large"),
+                        "작성자": st.column_config.TextColumn(width="small"),
+                        "작성일": st.column_config.TextColumn(width="medium"),
+                        "조회": st.column_config.NumberColumn(width="small"),
+                    }
+                )
+                
+                if event.selection.rows:
+                    idx = event.selection.rows[0]
+                    # df가 정렬되어 있을 수 있으므로 iloc 사용
+                    selected_row = df.iloc[idx]
+                    pid = int(selected_row["번호"])
                     
-                    # 번호
-                    row_c1.text(str(p["postId"]))
-                    
-                    # 제목 (버튼으로 구현하여 클릭 가능하게)
-                    # 제목이 너무 길면 잘릴 수 있으므로 help에 전체 제목 표시
-                    if row_c2.button(
-                        p["title"], 
-                        key=f"post_title_btn_{p['postId']}", 
-                        use_container_width=True,
-                    ):
-                        st.session_state.selected_post_id = int(p["postId"])
-                        st.rerun()
-                    
-                    # 작성자
-                    row_c3.text(p["author"])
-                    
-                    # 작성일
-                    row_c4.text(fmt_dt(p["timestamp"]))
-                    
-                    # 조회수
-                    row_c5.text(str(p["views"]))
-                    
-                    # 구분선 (너무 진하지 않게)
-                    st.markdown("<hr style='margin: 0.2rem 0; border-top: 1px dashed #eee;'>", unsafe_allow_html=True)
+                    st.session_state.selected_post_id = pid
+                    st.rerun()
                     
 else:
     st.info("준비 중인 메뉴입니다.")
