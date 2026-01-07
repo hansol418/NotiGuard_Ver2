@@ -390,14 +390,12 @@ def _init_postgres():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id)")
 
         # notices 테이블 컬럼 보완
-        try:
-            cursor.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS department TEXT DEFAULT '전체';")
-            cursor.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS date TEXT;")
-            conn.commit()
-        except:
-            conn.rollback()
+        cursor.execute("""
+            ALTER TABLE notices ADD COLUMN IF NOT EXISTS department TEXT DEFAULT '전체';
+            ALTER TABLE notices ADD COLUMN IF NOT EXISTS date TEXT;
+        """)
 
-        # inquiries (1:1 문의) - 기본 구조
+        # inquiries (1:1 문의)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS inquiries (
                 id SERIAL PRIMARY KEY,
@@ -406,26 +404,22 @@ def _init_postgres():
                 user_query TEXT NOT NULL,
                 content TEXT NOT NULL,
                 status TEXT DEFAULT 'pending',
-                created_at BIGINT NOT NULL
+                created_at BIGINT NOT NULL,
+                answer TEXT,
+                answered_at BIGINT,
+                answerer_id TEXT
             )
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_inquiries_emp ON inquiries(employee_id)")
-        conn.commit()
         
-        # inquiries 컬럼 추가 (안전하게 개별 실행)
-        for sql in [
-            "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answer TEXT",
-            "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answered_at BIGINT",
-            "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answerer_id TEXT"
-        ]:
-            try:
-                cursor.execute(sql)
-                conn.commit()
-            except Exception as e:
-                print(f"⚠️ 컬럼 추가 실패 (무시됨): {e}")
-                conn.rollback()
+        # 기존 테이블이 있을 경우를 대비한 컬럼 추가
+        cursor.execute("""
+            ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answer TEXT;
+            ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answered_at BIGINT;
+            ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS answerer_id TEXT;
+        """)
 
-        # popups 테이블 - 기본 구조
+        # popups 테이블 확장
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS popups (
                 popup_id BIGINT PRIMARY KEY,
@@ -434,22 +428,15 @@ def _init_postgres():
                 content TEXT,
                 target_departments TEXT,
                 target_teams TEXT,
-                created_at BIGINT
+                created_at BIGINT,
+                target_users TEXT,
+                type TEXT
             )
         """)
-        conn.commit()
-        
-        # popups 컬럼 추가
-        for sql in [
-            "ALTER TABLE popups ADD COLUMN IF NOT EXISTS target_users TEXT",
-            "ALTER TABLE popups ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'NOTICE'"
-        ]:
-            try:
-                cursor.execute(sql)
-                conn.commit()
-            except Exception as e:
-                print(f"⚠️ 팝업 컬럼 추가 실패 (무시됨): {e}")
-                conn.rollback()
+        cursor.execute("""
+            ALTER TABLE popups ADD COLUMN IF NOT EXISTS target_users TEXT;
+            ALTER TABLE popups ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'NOTICE';
+        """)
 
         # 구조 변경 사항 즉시 커밋 (데이터 삽입 오류와 격리)
         conn.commit()
