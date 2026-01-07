@@ -549,7 +549,7 @@ class ChatbotEngine:
 
     def _extract_keywords(self, query: str) -> List[str]:
         """
-        질문에서 키워드 추출 (간단한 버전)
+        질문에서 키워드 추출 (개선된 버전)
 
         Args:
             query: 사용자 질문
@@ -557,11 +557,41 @@ class ChatbotEngine:
         Returns:
             키워드 리스트
         """
-        # 불용어 제거 및 단어 추출
-        stopwords = ['은', '는', '이', '가', '을', '를', '에', '의', '와', '과', '으로', '로', '에서', '있', '없', '하', '되']
-        words = query.split()
-        keywords = [w for w in words if len(w) > 1 and w not in stopwords]
-        return keywords[:5]  # 최대 5개
+        import re
+        
+        # 특수문자 제거 (정규식: 한글, 영문, 숫자, 공백만 허용)
+        # '공지사항?' -> '공지사항 '
+        query_clean = re.sub(r'[^가-힣a-zA-Z0-9\s]', ' ', query)
+        words = query_clean.split()
+        
+        stopwords = [
+            '은', '는', '이', '가', '을', '를', '에', '의', '와', '과', '으로', '로', '에서', '부터', '까지',
+            '있다', '없다', '이다', '아니다', '하다', '되다', '않다', '같다', '싶다',
+            '알려줘', '알려주세요', '알려', '주세요', '해주세요', '해줘', '보여줘', '보여주세요',
+            '무엇', '무엇인가요', '어디', '어디서', '언제', '누구', '어떻게', '왜', 
+            '궁금해', '궁금해요', '질문', '문의', '사항', '관련', '대한', '대해', '대하여',
+            '안녕', '안녕하세요', '반가워', '반갑습니다', '감사', '고마워',
+            '공지', '사항', '확인', '방법', '좀', '수', '할', '한', '데', '건', '것',
+            '저', '나', '너', '우리', '그', '이', '저', '요', '네', '아니요',
+            '이번', '저번', '다음', '오늘', '내일', '어제', '지금', '현재'
+        ]
+        
+        keywords = []
+        for w in words:
+            w = w.strip()
+            # 2글자 이상이고 불용어가 아닌 경우만
+            if len(w) > 1 and w not in stopwords:
+                keywords.append(w)
+                
+        # 중복 제거 (순서 유지)
+        seen = set()
+        unique_keywords = []
+        for k in keywords:
+            if k not in seen:
+                unique_keywords.append(k)
+                seen.add(k)
+
+        return unique_keywords[:5]  # 최대 5개
 
     def _save_chat_log(
         self,
