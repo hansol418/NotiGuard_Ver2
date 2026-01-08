@@ -667,101 +667,110 @@ def popup_banner_dialog(payload: dict):
             st.session_state._popup_view = "chatbot"
             st.rerun()
 
-    # 버튼 색상 적용 (CSS 직접 주입 방식)
+    # 버튼 색상 적용 - 매우 공격적인 방식
     st.markdown(
         f"""
         <style>
-        /* 팝업 버튼 색상 - ID {popup_id} */
-        button[kind="secondary"]:has(p:first-child) {{
-            transition: all 0.2s ease !important;
-        }}
-        
-        /* 확인함 버튼 - 빨강 */
-        button:has(p:first-child):has-text("1. 확인함"),
-        button p:first-child:has-text("1. 확인함")::parent {{
-            background-color: #dc3545 !important;
-            border-color: #dc3545 !important;
+        /* 버튼 key 기반 타겟팅 */
+        [data-testid*="popup_confirm_{popup_id}"] button,
+        button[data-testid*="popup_confirm_{popup_id}"] {{
+            background: #dc3545 !important;
+            border: 2px solid #dc3545 !important;
             color: white !important;
         }}
         
-        /* 나중에 확인 버튼 - 파랑 */
-        button:has(p:first-child:contains("2. 나중에 확인")) {{
-            background-color: #0d6efd !important;
-            border-color: #0d6efd !important;
+        [data-testid*="popup_later_{popup_id}"] button,
+        button[data-testid*="popup_later_{popup_id}"] {{
+            background: #0d6efd !important;
+            border: 2px solid #0d6efd !important;
             color: white !important;
         }}
         
-        /* AI 요약 보기 버튼 - 초록 */
-        button:has(p:first-child:contains("3. AI 요약 보기")) {{
-            background-color: #198754 !important;
-            border-color: #198754 !important;
+        [data-testid*="popup_summary_{popup_id}"] button,
+        button[data-testid*="popup_summary_{popup_id}"] {{
+            background: #198754 !important;
+            border: 2px solid #198754 !important;
             color: white !important;
         }}
         
-        /* AI 챗봇에게 질문 버튼 - 노랑 */
-        button:has(p:first-child:contains("4. AI 챗봇에게 질문")) {{
-            background-color: #ffc107 !important;
-            border-color: #ffc107 !important;
+        [data-testid*="popup_chatbot_{popup_id}"] button,
+        button[data-testid*="popup_chatbot_{popup_id}"] {{
+            background: #ffc107 !important;
+            border: 2px solid #ffc107 !important;
             color: #000 !important;
         }}
         
-        /* 텍스트 색상 강제 */
-        button p {{
-            margin: 0 !important;
+        /* 버튼 내부 p 태그 색상 */
+        [data-testid*="popup_confirm_{popup_id}"] p,
+        [data-testid*="popup_later_{popup_id}"] p,
+        [data-testid*="popup_summary_{popup_id}"] p {{
+            color: white !important;
+        }}
+        
+        [data-testid*="popup_chatbot_{popup_id}"] p {{
+            color: #000 !important;
         }}
         </style>
-        
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # JavaScript로 직접 강제 적용
+    components.html(
+        f"""
         <script>
-        // JavaScript 폴백 - CSS가 작동하지 않을 경우를 대비
         (function() {{
             const doc = window.parent.document;
             
-            function forceButtonColors() {{
-                const buttons = doc.querySelectorAll('button');
+            function applyColors() {{
+                // Key 기반으로 버튼 찾기
+                const confirmBtn = doc.querySelector('[data-testid*="popup_confirm_{popup_id}"]')?.querySelector('button') || 
+                                  doc.querySelector('button[key*="popup_confirm_{popup_id}"]');
+                const laterBtn = doc.querySelector('[data-testid*="popup_later_{popup_id}"]')?.querySelector('button') || 
+                                doc.querySelector('button[key*="popup_later_{popup_id}"]');
+                const summaryBtn = doc.querySelector('[data-testid*="popup_summary_{popup_id}"]')?.querySelector('button') || 
+                                  doc.querySelector('button[key*="popup_summary_{popup_id}"]');
+                const chatbotBtn = doc.querySelector('[data-testid*="popup_chatbot_{popup_id}"]')?.querySelector('button') || 
+                                  doc.querySelector('button[key*="popup_chatbot_{popup_id}"]');
                 
-                buttons.forEach(btn => {{
-                    const text = (btn.textContent || "").trim();
-                    
-                    if (text.includes("1. 확인함")) {{
-                        btn.style.backgroundColor = "#dc3545";
-                        btn.style.borderColor = "#dc3545";
-                        btn.style.color = "white";
-                        const p = btn.querySelector('p');
-                        if (p) p.style.color = "white";
-                    }} else if (text.includes("2. 나중에 확인")) {{
-                        btn.style.backgroundColor = "#0d6efd";
-                        btn.style.borderColor = "#0d6efd";
-                        btn.style.color = "white";
-                        const p = btn.querySelector('p');
-                        if (p) p.style.color = "white";
-                    }} else if (text.includes("3. AI 요약 보기")) {{
-                        btn.style.backgroundColor = "#198754";
-                        btn.style.borderColor = "#198754";
-                        btn.style.color = "white";
-                        const p = btn.querySelector('p');
-                        if (p) p.style.color = "white";
-                    }} else if (text.includes("4. AI 챗봇에게 질문")) {{
-                        btn.style.backgroundColor = "#ffc107";
-                        btn.style.borderColor = "#ffc107";
-                        btn.style.color = "#000";
-                        const p = btn.querySelector('p');
-                        if (p) p.style.color = "#000";
-                    }}
-                }});
+                if (confirmBtn) {{
+                    confirmBtn.style.cssText = 'background: #dc3545 !important; border: 2px solid #dc3545 !important; color: white !important;';
+                    const p = confirmBtn.querySelector('p');
+                    if (p) p.style.color = 'white';
+                }}
+                
+                if (laterBtn) {{
+                    laterBtn.style.cssText = 'background: #0d6efd !important; border: 2px solid #0d6efd !important; color: white !important;';
+                    const p = laterBtn.querySelector('p');
+                    if (p) p.style.color = 'white';
+                }}
+                
+                if (summaryBtn) {{
+                    summaryBtn.style.cssText = 'background: #198754 !important; border: 2px solid #198754 !important; color: white !important;';
+                    const p = summaryBtn.querySelector('p');
+                    if (p) p.style.color = 'white';
+                }}
+                
+                if (chatbotBtn) {{
+                    chatbotBtn.style.cssText = 'background: #ffc107 !important; border: 2px solid #ffc107 !important; color: #000 !important;';
+                    const p = chatbotBtn.querySelector('p');
+                    if (p) p.style.color = '#000';
+                }}
             }}
             
             // 즉시 실행
-            forceButtonColors();
+            setTimeout(applyColors, 10);
+            setTimeout(applyColors, 100);
+            setTimeout(applyColors, 300);
+            setTimeout(applyColors, 500);
             
             // 주기적 실행
-            const interval = setInterval(forceButtonColors, 100);
-            
-            // 10초 후 중지 (성능 보호)
-            setTimeout(() => clearInterval(interval), 10000);
+            const interval = setInterval(applyColors, 200);
+            setTimeout(() => clearInterval(interval), 5000);
         }})();
         </script>
         """,
-        unsafe_allow_html=True
+        height=0
     )
 
 
