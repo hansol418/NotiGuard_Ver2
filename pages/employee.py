@@ -487,32 +487,39 @@ def popup_banner_dialog(payload: dict):
             st.rerun()
 
     # 버튼 색상 적용 스크립트
+    # 버튼 색상 적용 스크립트 (강력한 적용)
     components.html(
         """
         <script>
         (function() {
             const doc = window.parent.document;
-            const buttons = doc.querySelectorAll('button');
-            buttons.forEach(btn => {
-                const text = (btn.textContent || "").trim();
-                if (text.includes("1. 확인함")) {
-                    btn.style.backgroundColor = "#d9534f"; // Red
-                    btn.style.borderColor = "#d9534f";
-                    btn.style.color = "white";
-                } else if (text.includes("2. 나중에 확인")) {
-                    btn.style.backgroundColor = "#0b74d1"; // Blue
-                    btn.style.borderColor = "#0b74d1";
-                    btn.style.color = "white";
-                } else if (text.includes("3. AI 요약 보기")) {
-                    btn.style.backgroundColor = "#41b04a"; // Green
-                    btn.style.borderColor = "#41b04a";
-                    btn.style.color = "white";
-                } else if (text.includes("4. AI 챗봇에게 질문")) {
-                    btn.style.backgroundColor = "#f59e0b"; // Yellow
-                    btn.style.borderColor = "#f59e0b";
-                    btn.style.color = "white";
-                }
-            });
+            
+            function applyStyles() {
+                const buttons = doc.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    const text = (btn.textContent || "").trim();
+                    
+                    // 스타일 강제 적용 (!important)
+                    if (text.includes("1. 확인함")) {
+                        btn.style.cssText = "background-color: #d9534f !important; border-color: #d9534f !important; color: white !important;";
+                    } else if (text.includes("2. 나중에 확인")) {
+                        btn.style.cssText = "background-color: #0b74d1 !important; border-color: #0b74d1 !important; color: white !important;";
+                    } else if (text.includes("3. AI 요약 보기")) {
+                        btn.style.cssText = "background-color: #41b04a !important; border-color: #41b04a !important; color: white !important;";
+                    } else if (text.includes("4. AI 챗봇에게 질문")) {
+                        btn.style.cssText = "background-color: #f59e0b !important; border-color: #f59e0b !important; color: white !important;";
+                    }
+                });
+            }
+
+            // 1. 즉시 실행
+            applyStyles();
+
+            // 2. 일정 시간 반복 (Streamlit 리렌더링 대응)
+            const interval = setInterval(applyStyles, 100);
+            
+            // 3. 5초 후 인터벌 중지 (성능 보호)
+            setTimeout(() => clearInterval(interval), 5000);
         })();
         </script>
         """,
