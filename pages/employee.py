@@ -482,17 +482,17 @@ def popup_banner_dialog(payload: dict):
         if st.button("4. AI 챗봇에게 질문", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
             service.log_chatbot_move(emp_id, popup_id)
 
-            # 챗봇 모달에 전달할 초기 질문 설정
+            # 챗봇 페이지로 전달할 초기 질문 설정
             st.session_state["_chatbot_initial_query"] = f"{title}에 대해 알려줘"
 
-            # 팝업 닫기
+            # 팝업 닫기 (상태 초기화)
             st.session_state._popup_modal_open = False
             st.session_state._popup_payload = None
             st.session_state._last_popup_id = popup_id
+            st.session_state._chatbot_modal_open = False # 기존 모달 플래그도 끔
 
-            # 챗봇 모달 열기
-            st.session_state._chatbot_modal_open = True
-            st.rerun()
+            # 챗봇 페이지로 이동
+            st.switch_page("pages/chatbot.py")
 
     # 버튼 색상 적용 스크립트
     # 버튼 색상 적용 스크립트 (강력한 적용)
