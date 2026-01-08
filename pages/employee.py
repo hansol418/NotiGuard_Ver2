@@ -148,7 +148,7 @@ def _inject_dialog_style():
         <script>
         (function () {
           const doc = window.parent.document;
-          const id = "hs-popup-style-v4";
+          const id = "hs-popup-style-v5";
           if (doc.getElementById(id)) return;
 
           const style = doc.createElement("style");
@@ -173,6 +173,11 @@ def _inject_dialog_style():
               padding-bottom: 0px !important;
               margin: 0 auto !important;
               max-width: 100% !important;
+            }
+
+            /* 닫기 버튼(X) 숨김 */
+            div[role="dialog"] button[aria-label="Close"] {
+              display: none !important;
             }
           `;
           doc.head.appendChild(style);
