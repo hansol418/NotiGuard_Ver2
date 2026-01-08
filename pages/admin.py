@@ -426,7 +426,7 @@ elif menu == "게시판":
 elif menu == "글쓰기":
     st.subheader("새글쓰기")
 
-    ntype = st.radio("공지 유형", ["중요", "일반"], index=0, horizontal=True)
+    ntype = st.radio("공지 유형", ["중요", "일반"], index=1, horizontal=True)
     title = st.text_input("제목", value="", key="w_title")
     content = st.text_area("내용", value="", height=220, key="w_content")
     files = st.file_uploader("첨부파일(이미지/파일)", accept_multiple_files=True, key="w_files")
