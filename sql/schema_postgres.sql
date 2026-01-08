@@ -109,7 +109,7 @@ CREATE INDEX IF NOT EXISTS idx_inquiries_status ON inquiries(status);
 -- 기본 직원 데이터
 INSERT INTO employees (employee_id, name, department, team, ignore_remaining)
 VALUES
-  ('HS001', '김산', '경영관리본부', '재경팀', 3),
+  ('HS001', '김바다', '경영관리본부', '재경팀', 3),
   ('HS002', '이하나', '연구개발본부', '연구1팀', 3),
   ('HS003', '홍길동', '연구개발본부', '연구2팀', 3)
 ON CONFLICT (employee_id) DO NOTHING;

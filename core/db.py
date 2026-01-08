@@ -156,7 +156,7 @@ def _init_sqlite():
         if cnt_emp == 0:
             conn.execute(
                 "INSERT INTO employees(employee_id, name, department, team, ignore_remaining) VALUES (?,?,?,?,?)",
-                ("HS001", "김산", "경영관리본부", "재경팀", 3),
+                ("HS001", "김바다", "경영관리본부", "재경팀", 3),
             )
             conn.execute(
                 "INSERT INTO employees(employee_id, name, department, team, ignore_remaining) VALUES (?,?,?,?,?)",
@@ -411,7 +411,7 @@ def _init_postgres():
 
         # 기본 직원 계정 생성
         employees = [
-            ("HS001", "김산", "경영관리본부", "재경팀"),
+            ("HS001", "김바다", "경영관리본부", "재경팀"),
             ("HS002", "이하나", "연구개발본부", "연구1팀"),
             ("HS003", "홍길동", "연구개발본부", "연구2팀"),
         ]
