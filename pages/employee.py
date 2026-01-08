@@ -237,6 +237,25 @@ def popup_banner_dialog(payload: dict):
     
     # 팝업 뷰 상태 (content / chatbot)
     st.session_state.setdefault("_popup_view", "content")
+    
+    # 버튼 색상 CSS - 최우선 주입
+    st.markdown(
+        """
+        <style>
+        /* 팝업 버튼 색상 - 매우 높은 우선순위 */
+        div[data-testid="stDialog"] button[data-testid="baseButton-secondary"] {
+            font-weight: 500 !important;
+        }
+        
+        /* 너비 100% 버튼에만 적용 */
+        div[data-testid="stDialog"] button[data-testid="baseButton-secondary"][style*="width: 100%"],
+        div[data-testid="stDialog"] button[style*="width"][style*="100%"] {
+            border: 2px solid !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
     def _force_close_dialog_dom():
         components.html(
@@ -665,72 +684,105 @@ def popup_banner_dialog(payload: dict):
             st.session_state._popup_view = "chatbot"
             st.rerun()
 
-    # 버튼 색상 즉시 적용 - 모든 버튼 렌더링 후
+    # 버튼 색상 강제 적용 - MutationObserver 사용
     components.html(
         """
         <script>
         (function() {
             const doc = window.parent.document;
-            let attempts = 0;
             
-            function applyColors() {
-                const buttons = doc.querySelectorAll('button');
-                let colored = 0;
+            const COLORS = {
+                '1. 확인함': { bg: '#d9534f', border: '#d9534f', text: 'white' },
+                '2. 나중에 확인': { bg: '#0b74d1', border: '#0b74d1', text: 'white' },
+                '3. AI 요약 보기': { bg: '#41b04a', border: '#41b04a', text: 'white' },
+                '4. AI 챗봇에게 질문': { bg: '#f59e0b', border: '#f59e0b', text: 'black' }
+            };
+            
+            function colorButton(btn) {
+                const txt = (btn.textContent || '').trim();
                 
-                buttons.forEach(btn => {
-                    const txt = (btn.textContent || '').trim();
-                    
-                    if (txt.includes('1. 확인함')) {
-                        // 확인함 - 빨강
-                        btn.style.cssText = 'background: #d9534f !important; border: 2px solid #d9534f !important; color: white !important;';
+                for (const [key, colors] of Object.entries(COLORS)) {
+                    if (txt.includes(key)) {
+                        btn.style.cssText = `
+                            background: ${colors.bg} !important;
+                            background-color: ${colors.bg} !important;
+                            border: 2px solid ${colors.border} !important;
+                            border-color: ${colors.border} !important;
+                            color: ${colors.text} !important;
+                        `;
                         const p = btn.querySelector('p');
-                        if (p) p.style.cssText = 'color: white !important;';
-                        colored++;
-                    } 
-                    else if (txt.includes('2. 나중에 확인')) {
-                        // 나중에 확인 - 파랑
-                        btn.style.cssText = 'background: #0b74d1 !important; border: 2px solid #0b74d1 !important; color: white !important;';
-                        const p = btn.querySelector('p');
-                        if (p) p.style.cssText = 'color: white !important;';
-                        colored++;
-                    } 
-                    else if (txt.includes('3. AI 요약 보기')) {
-                        // AI 요약 보기 - 초록
-                        btn.style.cssText = 'background: #41b04a !important; border: 2px solid #41b04a !important; color: white !important;';
-                        const p = btn.querySelector('p');
-                        if (p) p.style.cssText = 'color: white !important;';
-                        colored++;
-                    } 
-                    else if (txt.includes('4. AI 챗봇에게 질문')) {
-                        // AI 챗봇에게 질문 - 노랑
-                        btn.style.cssText = 'background: #f59e0b !important; border: 2px solid #f59e0b !important; color: black !important;';
-                        const p = btn.querySelector('p');
-                        if (p) p.style.cssText = 'color: black !important;';
-                        colored++;
+                        if (p) {
+                            p.style.cssText = `color: ${colors.text} !important;`;
+                        }
+                        return true;
                     }
+                }
+                return false;
+            }
+            
+            function colorAllButtons() {
+                const buttons = doc.querySelectorAll('button');
+                let count = 0;
+                buttons.forEach(btn => {
+                    if (colorButton(btn)) count++;
                 });
-                
-                attempts++;
-                return colored >= 4 || attempts >= 50;
+                return count;
             }
             
             // 즉시 실행
-            applyColors();
-            setTimeout(applyColors, 10);
-            setTimeout(applyColors, 50);
-            setTimeout(applyColors, 100);
-            setTimeout(applyColors, 200);
-            setTimeout(applyColors, 500);
+            colorAllButtons();
+            setTimeout(colorAllButtons, 10);
+            setTimeout(colorAllButtons, 50);
+            setTimeout(colorAllButtons, 100);
+            setTimeout(colorAllButtons, 200);
+            setTimeout(colorAllButtons, 500);
             
-            // 지속 실행
+            // MutationObserver로 DOM 변경 감지
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    // 새로 추가된 노드 확인
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1) { // Element 노드
+                            if (node.tagName === 'BUTTON') {
+                                colorButton(node);
+                            } else {
+                                // 자식 중 버튼 찾기
+                                const buttons = node.querySelectorAll ? node.querySelectorAll('button') : [];
+                                buttons.forEach(colorButton);
+                            }
+                        }
+                    });
+                    
+                    // 속성 변경된 버튼 재적용
+                    if (mutation.type === 'attributes' && mutation.target.tagName === 'BUTTON') {
+                        colorButton(mutation.target);
+                    }
+                });
+            });
+            
+            // body 전체 관찰
+            observer.observe(doc.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+            
+            // 주기적으로도 실행 (이중 안전장치)
+            let attempts = 0;
             const interval = setInterval(() => {
-                if (applyColors()) {
+                const count = colorAllButtons();
+                attempts++;
+                if (count >= 4 || attempts >= 50) {
                     clearInterval(interval);
                 }
             }, 100);
             
-            // 5초 후 강제 중지
-            setTimeout(() => clearInterval(interval), 5000);
+            // 10초 후 정리
+            setTimeout(() => {
+                clearInterval(interval);
+                observer.disconnect();
+            }, 10000);
         })();
         </script>
         """,
