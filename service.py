@@ -445,13 +445,17 @@ def get_latest_popup_for_employee(employee_id: str) -> Optional[Dict]:
 def record_popup_action(employee_id: str, popup_id: int, action: str, confirmed: str = "") -> None:
     ts = now_ms()
     with get_conn() as conn:
-        conn.execute(
-            """
-            INSERT INTO popup_logs(created_at, employee_id, popup_id, action, confirmed)
-            VALUES(?,?,?,?,?)
-            """,
-            (ts, employee_id, int(popup_id), action, confirmed or ""),
-        )
+        try:
+            conn.execute(
+                """
+                INSERT INTO popup_logs(created_at, employee_id, popup_id, action, confirmed)
+                VALUES(?,?,?,?,?)
+                """,
+                (ts, employee_id, int(popup_id), action, confirmed or ""),
+            )
+        except Exception as e:
+            # popup_id가 존재하지 않거나 FK 제약 조건 위반 시 무시 (로그만 남김)
+            print(f"[Warning] Failed to record popup action: {e} (popup_id={popup_id})")
 
 def confirm_popup_action(employee_id: str, popup_id: int) -> bool:
     record_popup_action(employee_id, popup_id, "확인함", "예")
