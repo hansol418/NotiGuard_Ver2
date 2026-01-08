@@ -441,16 +441,13 @@ def popup_banner_dialog(payload: dict):
 
     # [1행 1열] 버튼 1: 확인함
     with r1_c1:
-        st.markdown('<div class="hs-gap hs-btn-confirm">', unsafe_allow_html=True)
         if st.button("1. 확인함", use_container_width=True, key=f"popup_confirm_{popup_id}"):
             st.session_state._popup_confirm_pending = True
             st.session_state._popup_confirm_pending_id = popup_id
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # [1행 2열] 버튼 2: 나중에 확인
     with r1_c2:
-        st.markdown('<div class="hs-gap hs-btn-later">', unsafe_allow_html=True)
         # 텍스트 길이 줄임: "남은 횟수:" -> ""
         btn_label = f"2. 나중에 확인 ({remaining}회)"
         if st.button(btn_label, use_container_width=True, key=f"popup_later_{popup_id}"):
@@ -460,11 +457,9 @@ def popup_banner_dialog(payload: dict):
             else:
                 st.session_state.employee_info = service.get_employee_info(emp_id)
                 close_popup_now_hard()
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # [2행 1열] 버튼 3: 요약 보기
     with r2_c1:
-        st.markdown('<div class="hs-gap hs-btn-summary">', unsafe_allow_html=True)
         if st.button("3. 요약 보기", use_container_width=True, key=f"popup_summary_{popup_id}"):
             st.session_state["_popup_summary_modal_open"] = True
             st.session_state["_popup_summary_payload"] = {
@@ -473,11 +468,9 @@ def popup_banner_dialog(payload: dict):
                 "content": content,
             }
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # [2행 2열] 버튼 4: 챗봇으로 바로가기
     with r2_c2:
-        st.markdown('<div class="hs-gap hs-btn-chat">', unsafe_allow_html=True)
         if st.button("4. 챗봇 질문", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
             service.log_chatbot_move(emp_id, popup_id)
 
@@ -492,7 +485,39 @@ def popup_banner_dialog(payload: dict):
             # 챗봇 모달 열기
             st.session_state._chatbot_modal_open = True
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+
+    # 버튼 색상 적용 스크립트
+    components.html(
+        """
+        <script>
+        (function() {
+            const doc = window.parent.document;
+            const buttons = doc.querySelectorAll('button');
+            buttons.forEach(btn => {
+                const text = (btn.textContent || "").trim();
+                if (text.includes("1. 확인함")) {
+                    btn.style.backgroundColor = "#d9534f"; // Red
+                    btn.style.borderColor = "#d9534f";
+                    btn.style.color = "white";
+                } else if (text.includes("2. 나중에 확인")) {
+                    btn.style.backgroundColor = "#0b74d1"; // Blue
+                    btn.style.borderColor = "#0b74d1";
+                    btn.style.color = "white";
+                } else if (text.includes("3. 요약 보기")) {
+                    btn.style.backgroundColor = "#41b04a"; // Green
+                    btn.style.borderColor = "#41b04a";
+                    btn.style.color = "white";
+                } else if (text.includes("4. 챗봇 질문")) {
+                    btn.style.backgroundColor = "#f59e0b"; // Yellow
+                    btn.style.borderColor = "#f59e0b";
+                    btn.style.color = "white";
+                }
+            });
+        })();
+        </script>
+        """,
+        height=0
+    )
 
 
 
