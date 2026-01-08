@@ -503,19 +503,29 @@ def popup_banner_dialog(payload: dict):
             const doc = window.parent.document;
             
             function applyStyles() {
+                // 모달 내부의 버튼만 타겟팅하기 위해 dialog[open] 또는 role="dialog" 활용 권장되나,
+                // Streamlit 구조상 전체 버튼 스캔 후 텍스트 매칭이 가장 확실함.
                 const buttons = doc.querySelectorAll('button');
                 buttons.forEach(btn => {
                     const text = (btn.textContent || "").trim();
                     
-                    // 스타일 강제 적용 (!important)
                     if (text.includes("1. 확인함")) {
                         btn.style.cssText = "background-color: #d9534f !important; border-color: #d9534f !important; color: white !important;";
+                        // 내부 텍스트 색상 강제
+                        const p = btn.querySelector('p');
+                        if (p) p.style.cssText = "color: white !important;";
                     } else if (text.includes("2. 나중에 확인")) {
                         btn.style.cssText = "background-color: #0b74d1 !important; border-color: #0b74d1 !important; color: white !important;";
+                        const p = btn.querySelector('p');
+                        if (p) p.style.cssText = "color: white !important;";
                     } else if (text.includes("3. AI 요약 보기")) {
                         btn.style.cssText = "background-color: #41b04a !important; border-color: #41b04a !important; color: white !important;";
+                        const p = btn.querySelector('p');
+                        if (p) p.style.cssText = "color: white !important;";
                     } else if (text.includes("4. AI 챗봇에게 질문")) {
                         btn.style.cssText = "background-color: #f59e0b !important; border-color: #f59e0b !important; color: white !important;";
+                        const p = btn.querySelector('p');
+                        if (p) p.style.cssText = "color: white !important;";
                     }
                 });
             }
@@ -523,11 +533,9 @@ def popup_banner_dialog(payload: dict):
             // 1. 즉시 실행
             applyStyles();
 
-            // 2. 일정 시간 반복 (Streamlit 리렌더링 대응)
-            const interval = setInterval(applyStyles, 100);
-            
-            // 3. 5초 후 인터벌 중지 (성능 보호)
-            setTimeout(() => clearInterval(interval), 5000);
+            // 2. 무한 반복 (Streamlit 리렌더링 및 모달 동작 대응)
+            // 성능 부하를 줄이기 위해 200ms 간격으로 설정
+            setInterval(applyStyles, 200);
         })();
         </script>
         """,
