@@ -13,7 +13,7 @@ from core.layout import (
     remove_floating_widget,
 )
 
-st.set_page_config(page_title="Admin", layout="wide")
+st.set_page_config(page_title="Admin", layout="wide", initial_sidebar_state="expanded")
 
 # 로그인 체크
 st.session_state.setdefault("logged_in", False)

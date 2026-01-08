@@ -12,7 +12,7 @@ from core.config import DEPARTMENT_EMAILS, ADMIN_EMAIL
 from core.email_utils import send_email
 import time
 
-st.set_page_config(page_title="Chatbot", layout="wide")
+st.set_page_config(page_title="Chatbot", layout="wide", initial_sidebar_state="expanded")
 
 # -------------------------
 # 로그인 체크

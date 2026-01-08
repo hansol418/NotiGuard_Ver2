@@ -17,7 +17,7 @@ from core.layout import (
 from core.summary import summarize_notice
 
 
-st.set_page_config(page_title="Employee", layout="wide")
+st.set_page_config(page_title="Employee", layout="wide", initial_sidebar_state="expanded")
 
 # -------------------------
 # 로그인 체크
