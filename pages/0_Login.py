@@ -47,7 +47,10 @@ cookie_manager = stx.CookieManager(key="login_cookie_manager")
 
 # 로그아웃 처리 (다른 페이지에서 넘어온 경우)
 if st.session_state.get("logout_clicked"):
-    cookie_manager.delete("user_token")
+    try:
+        cookie_manager.delete("user_token")
+    except KeyError:
+        pass
     st.session_state["logout_clicked"] = False
     import time
     time.sleep(0.5)
