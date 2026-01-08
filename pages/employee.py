@@ -654,6 +654,21 @@ def popup_banner_dialog(payload: dict):
             st.session_state._popup_confirm_pending = True
             st.session_state._popup_confirm_pending_id = popup_id
             st.rerun()
+        # 즉시 색상 적용
+        st.markdown(
+            """<style>
+            button:has(p:contains("1. 확인함")),
+            button[aria-label*="확인함"] {
+                background: #d9534f !important;
+                border: 2px solid #d9534f !important;
+                color: white !important;
+            }
+            button:has(p:contains("1. 확인함")) p {
+                color: white !important;
+            }
+            </style>""",
+            unsafe_allow_html=True
+        )
 
     # [1행 2열] 버튼 2: 나중에 확인 - 파랑
     with r1_c2:
@@ -665,6 +680,21 @@ def popup_banner_dialog(payload: dict):
             else:
                 st.session_state.employee_info = service.get_employee_info(emp_id)
                 close_popup_now_hard()
+        # 즉시 색상 적용
+        st.markdown(
+            """<style>
+            button:has(p:contains("2. 나중에 확인")),
+            button[aria-label*="나중에"] {
+                background: #0b74d1 !important;
+                border: 2px solid #0b74d1 !important;
+                color: white !important;
+            }
+            button:has(p:contains("2. 나중에 확인")) p {
+                color: white !important;
+            }
+            </style>""",
+            unsafe_allow_html=True
+        )
 
     # [2행 1열] 버튼 3: 요약 보기 - 초록
     with r2_c1:
@@ -676,6 +706,21 @@ def popup_banner_dialog(payload: dict):
                 "content": content,
             }
             st.rerun()
+        # 즉시 색상 적용
+        st.markdown(
+            """<style>
+            button:has(p:contains("3. AI 요약 보기")),
+            button[aria-label*="요약"] {
+                background: #41b04a !important;
+                border: 2px solid #41b04a !important;
+                color: white !important;
+            }
+            button:has(p:contains("3. AI 요약 보기")) p {
+                color: white !important;
+            }
+            </style>""",
+            unsafe_allow_html=True
+        )
 
     # [2행 2열] 버튼 4: 챗봇으로 바로가기 - 노랑
     with r2_c2:
@@ -683,6 +728,21 @@ def popup_banner_dialog(payload: dict):
             service.log_chatbot_move(emp_id, popup_id)
             st.session_state._popup_view = "chatbot"
             st.rerun()
+        # 즉시 색상 적용
+        st.markdown(
+            """<style>
+            button:has(p:contains("4. AI 챗봇에게 질문")),
+            button[aria-label*="챗봇"] {
+                background: #f59e0b !important;
+                border: 2px solid #f59e0b !important;
+                color: black !important;
+            }
+            button:has(p:contains("4. AI 챗봇에게 질문")) p {
+                color: black !important;
+            }
+            </style>""",
+            unsafe_allow_html=True
+        )
 
     # 버튼 색상 강제 적용 - MutationObserver 사용
     components.html(
