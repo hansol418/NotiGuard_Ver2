@@ -308,7 +308,7 @@ def popup_banner_dialog(payload: dict):
           height: 44px;
           border-radius: 8px;
           border: none;
-          background: #41b04a;
+          background: #d9534f;
           color: #fff;
           font-weight: 900;
           font-size: 15px;
@@ -318,7 +318,7 @@ def popup_banner_dialog(payload: dict):
           height: 44px;
           border-radius: 8px;
           border: none;
-          background: #d9534f;
+          background: #0b74d1;
           color: #fff;
           font-weight: 900;
           font-size: 15px;
@@ -328,7 +328,7 @@ def popup_banner_dialog(payload: dict):
           height: 44px;
           border-radius: 8px;
           border: none;
-          background: #6c757d;
+          background: #41b04a;
           color: #fff;
           font-weight: 900;
           font-size: 15px;
@@ -338,7 +338,7 @@ def popup_banner_dialog(payload: dict):
           height: 44px;
           border-radius: 8px;
           border: none;
-          background: #0b74d1;
+          background: #f59e0b;
           color: #fff;
           font-weight: 900;
           font-size: 15px;
