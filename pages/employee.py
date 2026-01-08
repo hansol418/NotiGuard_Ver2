@@ -629,18 +629,18 @@ def popup_banner_dialog(payload: dict):
     r1_c1, r1_c2 = st.columns(2, gap="small")
     r2_c1, r2_c2 = st.columns(2, gap="small")
 
-    # [1행 1열] 버튼 1: 확인함
+    # [1행 1열] 버튼 1: 확인함 - 빨강
     with r1_c1:
-        if st.button("1. 확인함", use_container_width=True, key=f"popup_confirm_{popup_id}"):
+        if st.button("1. 확인함", type="primary", use_container_width=True, key=f"popup_confirm_{popup_id}"):
             st.session_state._popup_confirm_pending = True
             st.session_state._popup_confirm_pending_id = popup_id
             st.rerun()
 
-    # [1행 2열] 버튼 2: 나중에 확인
+    # [1행 2열] 버튼 2: 나중에 확인 - 파랑
     with r1_c2:
         # 텍스트 길이 줄임: "남은 횟수:" -> ""
         btn_label = f"2. 나중에 확인 ({remaining}회)"
-        if st.button(btn_label, use_container_width=True, key=f"popup_later_{popup_id}"):
+        if st.button(btn_label, type="primary", use_container_width=True, key=f"popup_later_{popup_id}"):
             res = service.ignore_popup_action(emp_id, popup_id)
             if not res.get("ok"):
                 st.error("횟수 초과")
@@ -648,9 +648,9 @@ def popup_banner_dialog(payload: dict):
                 st.session_state.employee_info = service.get_employee_info(emp_id)
                 close_popup_now_hard()
 
-    # [2행 1열] 버튼 3: 요약 보기
+    # [2행 1열] 버튼 3: 요약 보기 - 초록
     with r2_c1:
-        if st.button("3. AI 요약 보기", use_container_width=True, key=f"popup_summary_{popup_id}"):
+        if st.button("3. AI 요약 보기", type="primary", use_container_width=True, key=f"popup_summary_{popup_id}"):
             st.session_state["_popup_summary_modal_open"] = True
             st.session_state["_popup_summary_payload"] = {
                 "popup_id": popup_id,
@@ -659,112 +659,129 @@ def popup_banner_dialog(payload: dict):
             }
             st.rerun()
 
-    # [2행 2열] 버튼 4: 챗봇으로 바로가기
+    # [2행 2열] 버튼 4: 챗봇으로 바로가기 - 노랑
     with r2_c2:
-        if st.button("4. AI 챗봇에게 질문", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
+        if st.button("4. AI 챗봇에게 질문", type="primary", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
             service.log_chatbot_move(emp_id, popup_id)
             # 팝업 내 챗봇 뷰로 전환
             st.session_state._popup_view = "chatbot"
             st.rerun()
 
-    # 버튼 색상 강제 적용
+    # 매우 강력한 CSS 주입
+    st.markdown(
+        f"""
+        <style>
+        /* 최대한 구체적인 선택자로 강제 적용 */
+        div[data-testid="stVerticalBlock"] button[kind="primary"],
+        div[data-testid="column"] button[kind="primary"],
+        button[kind="primary"][data-baseweb="button"],
+        div.stButton > button[kind="primary"] {{
+            font-weight: 600 !important;
+        }}
+        
+        /* 확인함 - 빨강 */
+        button[kind="primary"][data-baseweb="button"]:has(p:contains("1. 확인함")),
+        div.stButton > button:has(p:contains("1. 확인함")) {{
+            background-color: #dc3545 !important;
+            background: #dc3545 !important;
+            border-color: #dc3545 !important;
+            color: white !important;
+        }}
+        
+        /* 나중에 확인 - 파랑 */
+        button[kind="primary"][data-baseweb="button"]:has(p:contains("2. 나중에 확인")),
+        div.stButton > button:has(p:contains("2. 나중에 확인")) {{
+            background-color: #0d6efd !important;
+            background: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: white !important;
+        }}
+        
+        /* AI 요약 보기 - 초록 */
+        button[kind="primary"][data-baseweb="button"]:has(p:contains("3. AI 요약 보기")),
+        div.stButton > button:has(p:contains("3. AI 요약 보기")) {{
+            background-color: #198754 !important;
+            background: #198754 !important;
+            border-color: #198754 !important;
+            color: white !important;
+        }}
+        
+        /* AI 챗봇에게 질문 - 노랑 */
+        button[kind="primary"][data-baseweb="button"]:has(p:contains("4. AI 챗봇에게 질문")),
+        div.stButton > button:has(p:contains("4. AI 챗봇에게 질문")) {{
+            background-color: #ffc107 !important;
+            background: #ffc107 !important;
+            border-color: #ffc107 !important;
+            color: #000 !important;
+        }}
+        
+        /* 호버 효과도 유지 */
+        button:has(p:contains("1. 확인함")):hover {{ background-color: #bb2d3b !important; }}
+        button:has(p:contains("2. 나중에 확인")):hover {{ background-color: #0b5ed7 !important; }}
+        button:has(p:contains("3. AI 요약 보기")):hover {{ background-color: #157347 !important; }}
+        button:has(p:contains("4. AI 챗봇에게 질문")):hover {{ background-color: #ffca2c !important; }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # JavaScript 폴백
     components.html(
-        """
+        f"""
         <script>
-        (function() {
+        (function() {{
             const doc = window.parent.document;
+            let attemptCount = 0;
+            const maxAttempts = 100;
             
-            function paintButtons() {
-                const allButtons = doc.querySelectorAll('button');
+            function forceColors() {{
+                const allBtns = doc.querySelectorAll('button');
+                let painted = 0;
                 
-                allButtons.forEach(function(btn) {
-                    const txt = btn.innerText || btn.textContent || '';
+                allBtns.forEach(function(btn) {{
+                    const txt = (btn.innerText || btn.textContent || '').trim();
                     
-                    // 확인함 - 빨강
-                    if (txt.indexOf('1. 확인함') !== -1) {
-                        btn.style.setProperty('background-color', '#dc3545', 'important');
-                        btn.style.setProperty('background', '#dc3545', 'important');
-                        btn.style.setProperty('border-color', '#dc3545', 'important');
-                        btn.style.setProperty('color', 'white', 'important');
-                        btn.style.backgroundColor = '#dc3545';
-                        btn.style.borderColor = '#dc3545';
-                        btn.style.color = 'white';
-                        
-                        var p = btn.querySelector('p');
-                        if (p) {
-                            p.style.setProperty('color', 'white', 'important');
-                            p.style.color = 'white';
-                        }
-                    }
-                    // 나중에 확인 - 파랑
-                    else if (txt.indexOf('2. 나중에 확인') !== -1) {
-                        btn.style.setProperty('background-color', '#0d6efd', 'important');
-                        btn.style.setProperty('background', '#0d6efd', 'important');
-                        btn.style.setProperty('border-color', '#0d6efd', 'important');
-                        btn.style.setProperty('color', 'white', 'important');
-                        btn.style.backgroundColor = '#0d6efd';
-                        btn.style.borderColor = '#0d6efd';
-                        btn.style.color = 'white';
-                        
-                        var p = btn.querySelector('p');
-                        if (p) {
-                            p.style.setProperty('color', 'white', 'important');
-                            p.style.color = 'white';
-                        }
-                    }
-                    // AI 요약 보기 - 초록
-                    else if (txt.indexOf('3. AI 요약 보기') !== -1) {
-                        btn.style.setProperty('background-color', '#198754', 'important');
-                        btn.style.setProperty('background', '#198754', 'important');
-                        btn.style.setProperty('border-color', '#198754', 'important');
-                        btn.style.setProperty('color', 'white', 'important');
-                        btn.style.backgroundColor = '#198754';
-                        btn.style.borderColor = '#198754';
-                        btn.style.color = 'white';
-                        
-                        var p = btn.querySelector('p');
-                        if (p) {
-                            p.style.setProperty('color', 'white', 'important');
-                            p.style.color = 'white';
-                        }
-                    }
-                    // AI 챗봇에게 질문 - 노랑
-                    else if (txt.indexOf('4. AI 챗봇에게 질문') !== -1) {
-                        btn.style.setProperty('background-color', '#ffc107', 'important');
-                        btn.style.setProperty('background', '#ffc107', 'important');
-                        btn.style.setProperty('border-color', '#ffc107', 'important');
-                        btn.style.setProperty('color', '#000', 'important');
-                        btn.style.backgroundColor = '#ffc107';
-                        btn.style.borderColor = '#ffc107';
-                        btn.style.color = '#000';
-                        
-                        var p = btn.querySelector('p');
-                        if (p) {
-                            p.style.setProperty('color', '#000', 'important');
-                            p.style.color = '#000';
-                        }
-                    }
-                });
-            }
+                    if (txt.indexOf('1. 확인함') !== -1) {{
+                        btn.style.cssText = 'background: #dc3545 !important; background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important; font-weight: 600 !important;';
+                        painted++;
+                    }}
+                    else if (txt.indexOf('2. 나중에 확인') !== -1) {{
+                        btn.style.cssText = 'background: #0d6efd !important; background-color: #0d6efd !important; border-color: #0d6efd !important; color: white !important; font-weight: 600 !important;';
+                        painted++;
+                    }}
+                    else if (txt.indexOf(' 3. AI 요약 보기') !== -1) {{
+                        btn.style.cssText = 'background: #198754 !important; background-color: #198754 !important; border-color: #198754 !important; color: white !important; font-weight: 600 !important;';
+                        painted++;
+                    }}
+                    else if (txt.indexOf('4. AI 챗봇에게 질문') !== -1) {{
+                        btn.style.cssText = 'background: #ffc107 !important; background-color: #ffc107 !important; border-color: #ffc107 !important; color: #000 !important; font-weight: 600 !important;';
+                        painted++;
+                    }}
+                }});
+                
+                attemptCount++;
+                
+                // 4개 모두 색칠되었거나 최대 시도 횟수 도달시 중지
+                if (painted >= 4 || attemptCount >= maxAttempts) {{
+                    clearInterval(colorInterval);
+                }}
+            }}
             
-            // 여러 번 실행
-            paintButtons();
-            setTimeout(paintButtons, 50);
-            setTimeout(paintButtons, 100);
-            setTimeout(paintButtons, 200);
-            setTimeout(paintButtons, 500);
-            setTimeout(paintButtons, 1000);
+            // 즉시 여러 번 실행
+            forceColors();
+            setTimeout(forceColors, 10);
+            setTimeout(forceColors, 50);
+            setTimeout(forceColors, 100);
+            setTimeout(forceColors, 200);
+            setTimeout(forceColors, 500);
+            setTimeout(forceColors, 1000);
             
-            // 5초간 계속 실행
-            var count = 0;
-            var timer = setInterval(function() {
-                paintButtons();
-                count++;
-                if (count > 25) {
-                    clearInterval(timer);
-                }
-            }, 200);
-        })();
+            // 주기적 실행
+            const colorInterval = setInterval(forceColors, 100);
+            
+            // 10초 후 강제 중지
+            setTimeout(function() {{ clearInterval(colorInterval); }}, 10000);
+        }})();
         </script>
         """,
         height=0
