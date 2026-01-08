@@ -460,7 +460,7 @@ def popup_banner_dialog(payload: dict):
 
     # [2행 1열] 버튼 3: 요약 보기
     with r2_c1:
-        if st.button("3. 요약 보기", use_container_width=True, key=f"popup_summary_{popup_id}"):
+        if st.button("3. AI 요약 보기", use_container_width=True, key=f"popup_summary_{popup_id}"):
             st.session_state["_popup_summary_modal_open"] = True
             st.session_state["_popup_summary_payload"] = {
                 "popup_id": popup_id,
@@ -471,7 +471,7 @@ def popup_banner_dialog(payload: dict):
 
     # [2행 2열] 버튼 4: 챗봇으로 바로가기
     with r2_c2:
-        if st.button("4. 챗봇 질문", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
+        if st.button("4. AI 챗봇에게 질문", use_container_width=True, key=f"popup_chatbot_{popup_id}"):
             service.log_chatbot_move(emp_id, popup_id)
 
             # 챗봇 모달에 전달할 초기 질문 설정
@@ -503,11 +503,11 @@ def popup_banner_dialog(payload: dict):
                     btn.style.backgroundColor = "#0b74d1"; // Blue
                     btn.style.borderColor = "#0b74d1";
                     btn.style.color = "white";
-                } else if (text.includes("3. 요약 보기")) {
+                } else if (text.includes("3. AI 요약 보기")) {
                     btn.style.backgroundColor = "#41b04a"; // Green
                     btn.style.borderColor = "#41b04a";
                     btn.style.color = "white";
-                } else if (text.includes("4. 챗봇 질문")) {
+                } else if (text.includes("4. AI 챗봇에게 질문")) {
                     btn.style.backgroundColor = "#f59e0b"; // Yellow
                     btn.style.borderColor = "#f59e0b";
                     btn.style.color = "white";
