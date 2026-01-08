@@ -654,21 +654,6 @@ def popup_banner_dialog(payload: dict):
             st.session_state._popup_confirm_pending = True
             st.session_state._popup_confirm_pending_id = popup_id
             st.rerun()
-        # 즉시 색상 적용
-        st.markdown(
-            """<style>
-            button:has(p:contains("1. 확인함")),
-            button[aria-label*="확인함"] {
-                background: #d9534f !important;
-                border: 2px solid #d9534f !important;
-                color: white !important;
-            }
-            button:has(p:contains("1. 확인함")) p {
-                color: white !important;
-            }
-            </style>""",
-            unsafe_allow_html=True
-        )
 
     # [1행 2열] 버튼 2: 나중에 확인 - 파랑
     with r1_c2:
@@ -680,21 +665,6 @@ def popup_banner_dialog(payload: dict):
             else:
                 st.session_state.employee_info = service.get_employee_info(emp_id)
                 close_popup_now_hard()
-        # 즉시 색상 적용
-        st.markdown(
-            """<style>
-            button:has(p:contains("2. 나중에 확인")),
-            button[aria-label*="나중에"] {
-                background: #0b74d1 !important;
-                border: 2px solid #0b74d1 !important;
-                color: white !important;
-            }
-            button:has(p:contains("2. 나중에 확인")) p {
-                color: white !important;
-            }
-            </style>""",
-            unsafe_allow_html=True
-        )
 
     # [2행 1열] 버튼 3: 요약 보기 - 초록
     with r2_c1:
@@ -706,21 +676,6 @@ def popup_banner_dialog(payload: dict):
                 "content": content,
             }
             st.rerun()
-        # 즉시 색상 적용
-        st.markdown(
-            """<style>
-            button:has(p:contains("3. AI 요약 보기")),
-            button[aria-label*="요약"] {
-                background: #41b04a !important;
-                border: 2px solid #41b04a !important;
-                color: white !important;
-            }
-            button:has(p:contains("3. AI 요약 보기")) p {
-                color: white !important;
-            }
-            </style>""",
-            unsafe_allow_html=True
-        )
 
     # [2행 2열] 버튼 4: 챗봇으로 바로가기 - 노랑
     with r2_c2:
@@ -728,121 +683,57 @@ def popup_banner_dialog(payload: dict):
             service.log_chatbot_move(emp_id, popup_id)
             st.session_state._popup_view = "chatbot"
             st.rerun()
-        # 즉시 색상 적용
-        st.markdown(
-            """<style>
-            button:has(p:contains("4. AI 챗봇에게 질문")),
-            button[aria-label*="챗봇"] {
-                background: #f59e0b !important;
-                border: 2px solid #f59e0b !important;
-                color: black !important;
-            }
-            button:has(p:contains("4. AI 챗봇에게 질문")) p {
-                color: black !important;
-            }
-            </style>""",
-            unsafe_allow_html=True
-        )
 
-    # 버튼 색상 강제 적용 - MutationObserver 사용
+    # 버튼 색상 강제 적용 - 매우 공격적인 JavaScript
     components.html(
         """
         <script>
         (function() {
             const doc = window.parent.document;
             
-            const COLORS = {
-                '1. 확인함': { bg: '#d9534f', border: '#d9534f', text: 'white' },
-                '2. 나중에 확인': { bg: '#0b74d1', border: '#0b74d1', text: 'white' },
-                '3. AI 요약 보기': { bg: '#41b04a', border: '#41b04a', text: 'white' },
-                '4. AI 챗봇에게 질문': { bg: '#f59e0b', border: '#f59e0b', text: 'black' }
-            };
-            
-            function colorButton(btn) {
-                const txt = (btn.textContent || '').trim();
+            function paintButton(btn, bg, text) {
+                btn.style.background = bg;
+                btn.style.backgroundColor = bg;
+                btn.style.borderColor = bg;
+                btn.style.border = '2px solid ' + bg;
+                btn.style.color = text;
                 
-                for (const [key, colors] of Object.entries(COLORS)) {
-                    if (txt.includes(key)) {
-                        btn.style.cssText = `
-                            background: ${colors.bg} !important;
-                            background-color: ${colors.bg} !important;
-                            border: 2px solid ${colors.border} !important;
-                            border-color: ${colors.border} !important;
-                            color: ${colors.text} !important;
-                        `;
-                        const p = btn.querySelector('p');
-                        if (p) {
-                            p.style.cssText = `color: ${colors.text} !important;`;
-                        }
-                        return true;
-                    }
-                }
-                return false;
+                // p 태그도 색상 변경
+                const ps = btn.querySelectorAll('p');
+                ps.forEach(p => {
+                    p.style.color = text;
+                });
             }
             
-            function colorAllButtons() {
+            function colorAll() {
                 const buttons = doc.querySelectorAll('button');
-                let count = 0;
+                
                 buttons.forEach(btn => {
-                    if (colorButton(btn)) count++;
-                });
-                return count;
-            }
-            
-            // 즉시 실행
-            colorAllButtons();
-            setTimeout(colorAllButtons, 10);
-            setTimeout(colorAllButtons, 50);
-            setTimeout(colorAllButtons, 100);
-            setTimeout(colorAllButtons, 200);
-            setTimeout(colorAllButtons, 500);
-            
-            // MutationObserver로 DOM 변경 감지
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    // 새로 추가된 노드 확인
-                    mutation.addedNodes.forEach((node) => {
-                        if (node.nodeType === 1) { // Element 노드
-                            if (node.tagName === 'BUTTON') {
-                                colorButton(node);
-                            } else {
-                                // 자식 중 버튼 찾기
-                                const buttons = node.querySelectorAll ? node.querySelectorAll('button') : [];
-                                buttons.forEach(colorButton);
-                            }
-                        }
-                    });
+                    const txt = btn.textContent || '';
                     
-                    // 속성 변경된 버튼 재적용
-                    if (mutation.type === 'attributes' && mutation.target.tagName === 'BUTTON') {
-                        colorButton(mutation.target);
+                    if (txt.indexOf('1. 확인함') > -1) {
+                        paintButton(btn, '#d9534f', 'white');
+                    } 
+                    else if (txt.indexOf('2. 나중에 확인') > -1) {
+                        paintButton(btn, '#0b74d1', 'white');
+                    } 
+                    else if (txt.indexOf('3. AI 요약') > -1) {
+                        paintButton(btn, '#41b04a', 'white');
+                    } 
+                    else if (txt.indexOf('4. AI 챗봇') > -1) {
+                        paintButton(btn, '#f59e0b', 'black');
                     }
                 });
-            });
+            }
             
-            // body 전체 관찰
-            observer.observe(doc.body, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['style', 'class']
-            });
+            // 즉시 여러 번 실행
+            for (let i = 0; i < 10; i++) {
+                setTimeout(colorAll, i * 100);
+            }
             
-            // 주기적으로도 실행 (이중 안전장치)
-            let attempts = 0;
-            const interval = setInterval(() => {
-                const count = colorAllButtons();
-                attempts++;
-                if (count >= 4 || attempts >= 50) {
-                    clearInterval(interval);
-                }
-            }, 100);
-            
-            // 10초 후 정리
-            setTimeout(() => {
-                clearInterval(interval);
-                observer.disconnect();
-            }, 10000);
+            // 30초간 매우 자주 실행
+            const interval = setInterval(colorAll, 50);
+            setTimeout(() => clearInterval(interval), 30000);
         })();
         </script>
         """,
