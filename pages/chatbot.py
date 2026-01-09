@@ -371,18 +371,48 @@ with col_chat:
         </div>
         """, unsafe_allow_html=True)
         
-        # 예시 질문 (대화가 없을 때만 표시)
+        # 예시 질문 (대화가 없을 때만 표시) - 최근 공지사항 기반으로 동적 생성
         if len(current_session["messages"]) == 0:
             st.markdown("#### 💡 예시 질문")
-            example_questions = [
-                "이번 주 안전교육 일정 알려줘",
+            
+            # 최근 중요 공지사항 가져오기 (중요도가 높은 것 우선)
+            from core.db import get_conn
+            with get_conn() as conn:
+                cur = conn.execute(
+                    """
+                    SELECT title, type
+                    FROM notices
+                    ORDER BY 
+                        CASE WHEN type = '중요' THEN 0 ELSE 1 END,
+                        post_id DESC
+                    LIMIT 4
+                    """
+                )
+                recent_notices = cur.fetchall()
+            
+            # 공지사항 제목을 기반으로 예시 질문 생성
+            example_questions = []
+            for notice in recent_notices:
+                title = notice["title"]
+                # 제목을 질문 형태로 변환
+                if len(title) > 30:
+                    question = f"{title[:27]}... 알려줘"
+                else:
+                    question = f"{title} 알려줘"
+                example_questions.append(question)
+            
+            # 공지사항이 부족하면 기본 질문 추가
+            default_questions = [
                 "최근 공지사항 요약해줘",
-                "휴가 신청 방법 알려줘",
-                "복지 제도에 대해 알려줘"
+                "중요 공지 알려줘",
+                "이번 주 일정 알려줘",
+                "전체 공지사항 보여줘"
             ]
+            while len(example_questions) < 4:
+                example_questions.append(default_questions[len(example_questions)])
             
             cols = st.columns(2)
-            for i, question in enumerate(example_questions):
+            for i, question in enumerate(example_questions[:4]):  # 최대 4개만 표시
                 with cols[i % 2]:
                     if st.button(f"💬 {question}", key=f"example_{i}", use_container_width=True):
                         # 예시 질문을 사용자 메시지로 추가
@@ -391,8 +421,6 @@ with col_chat:
                             "content": question
                         })
                         service.add_chat_message(st.session_state.current_session_id, "user", question)
-                        
-
                         
                         # 첫 메시지인 경우 세션 이름 업데이트
                         if len(current_session["messages"]) == 1:
@@ -412,8 +440,6 @@ with col_chat:
                                 "notice_details": notice_details
                             })
                             service.add_chat_message(st.session_state.current_session_id, "assistant", response, notice_refs, notice_details)
-                            
-
                         
                         st.rerun()
             
