@@ -130,6 +130,71 @@ def login_modal():
                         st.session_state.employee_info = emp
                         st.session_state._login_modal_open = False
                         st.switch_page("pages/employee.py")
+    
+    # 간편 로그인 버튼
+    st.divider()
+    st.caption("🚀 간편 로그인")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("👤 Admin", use_container_width=True, type="secondary"):
+            # Admin 계정으로 자동 로그인
+            info = service.login_account("admin", "1234")
+            if info:
+                expires = datetime.datetime.now() + datetime.timedelta(days=7)
+                cookie_manager.set("user_token", info["loginId"], expires_at=expires)
+                
+                st.session_state.logged_in = True
+                st.session_state.role = info["role"]
+                st.session_state.employee_id = None
+                st.session_state.employee_info = None
+                st.session_state.login_error = None
+                st.session_state._login_modal_open = False
+                
+                import time
+                time.sleep(0.5)
+                st.switch_page("pages/admin.py")
+    
+    with col2:
+        if st.button("👤 직원 HS001", use_container_width=True, type="secondary"):
+            # HS001 계정으로 자동 로그인
+            info = service.login_account("HS001", "1234")
+            if info:
+                expires = datetime.datetime.now() + datetime.timedelta(days=7)
+                cookie_manager.set("user_token", info["loginId"], expires_at=expires)
+                
+                st.session_state.logged_in = True
+                st.session_state.role = info["role"]
+                emp = info["employee"]
+                st.session_state.employee_id = emp["employeeId"]
+                st.session_state.employee_info = emp
+                st.session_state.login_error = None
+                st.session_state._login_modal_open = False
+                
+                import time
+                time.sleep(0.5)
+                st.switch_page("pages/employee.py")
+    
+    with col3:
+        if st.button("👤 직원 HS002", use_container_width=True, type="secondary"):
+            # HS002 계정으로 자동 로그인
+            info = service.login_account("HS002", "1234")
+            if info:
+                expires = datetime.datetime.now() + datetime.timedelta(days=7)
+                cookie_manager.set("user_token", info["loginId"], expires_at=expires)
+                
+                st.session_state.logged_in = True
+                st.session_state.role = info["role"]
+                emp = info["employee"]
+                st.session_state.employee_id = emp["employeeId"]
+                st.session_state.employee_info = emp
+                st.session_state.login_error = None
+                st.session_state._login_modal_open = False
+                
+                import time
+                time.sleep(0.5)
+                st.switch_page("pages/employee.py")
 
 
 # 페이지 로드시 모달을 “자동”으로 한번 띄우기
