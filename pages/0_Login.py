@@ -138,7 +138,7 @@ def login_modal():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("👤 Admin", use_container_width=True, type="secondary"):
+        if st.button("👤 Admin", key="quick_login_admin", use_container_width=True, type="secondary"):
             # Admin 계정으로 자동 로그인
             info = service.login_account("admin", "1234")
             if info:
@@ -157,7 +157,7 @@ def login_modal():
                 st.switch_page("pages/admin.py")
     
     with col2:
-        if st.button("👤 직원 HS001", use_container_width=True, type="secondary"):
+        if st.button("👤 직원 HS001", key="quick_login_hs001", use_container_width=True, type="secondary"):
             # HS001 계정으로 자동 로그인
             info = service.login_account("HS001", "1234")
             if info:
@@ -177,7 +177,7 @@ def login_modal():
                 st.switch_page("pages/employee.py")
     
     with col3:
-        if st.button("👤 직원 HS002", use_container_width=True, type="secondary"):
+        if st.button("👤 직원 HS002", key="quick_login_hs002", use_container_width=True, type="secondary"):
             # HS002 계정으로 자동 로그인
             info = service.login_account("HS002", "1234")
             if info:
