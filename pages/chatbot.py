@@ -458,16 +458,10 @@ def render_chat_interface():
                             stream_generator = engine.ask_stream(question)
                             response = st.write_stream(stream_generator)
                             
-                            # 스트리밍 완료 후 메타데이터 가져오기
-                            try:
-                                metadata = stream_generator.send(None)  # generator에서 반환값 가져오기
-                                notice_refs = metadata.get("notice_refs", [])
-                                notice_details = metadata.get("notice_details", [])
-                            except StopIteration as e:
-                                # generator가 return으로 값을 반환한 경우
-                                metadata = e.value if hasattr(e, 'value') else {}
-                                notice_refs = metadata.get("notice_refs", [])
-                                notice_details = metadata.get("notice_details", [])
+                            # 스트리밍 완료 후 메타데이터 가져오기 (session_state에서)
+                            metadata = st.session_state.get("_stream_metadata", {})
+                            notice_refs = metadata.get("notice_refs", [])
+                            notice_details = metadata.get("notice_details", [])
                             
                             current_session["messages"].append({
                                 "role": "assistant",
@@ -505,15 +499,10 @@ def render_chat_interface():
                 stream_generator = engine.ask_stream(initial_q)
                 response = st.write_stream(stream_generator)
                 
-                # 스트리밍 완료 후 메타데이터 가져오기
-                try:
-                    metadata = stream_generator.send(None)
-                    notice_refs = metadata.get("notice_refs", [])
-                    notice_details = metadata.get("notice_details", [])
-                except StopIteration as e:
-                    metadata = e.value if hasattr(e, 'value') else {}
-                    notice_refs = metadata.get("notice_refs", [])
-                    notice_details = metadata.get("notice_details", [])
+                # 스트리밍 완료 후 메타데이터 가져오기 (session_state에서)
+                metadata = st.session_state.get("_stream_metadata", {})
+                notice_refs = metadata.get("notice_refs", [])
+                notice_details = metadata.get("notice_details", [])
                 
                 current_session["messages"].append({
                     "role": "assistant",
@@ -557,15 +546,10 @@ def render_chat_interface():
                 stream_generator = engine.ask_stream(prompt)
                 response = st.write_stream(stream_generator)
                 
-                # 스트리밍 완료 후 메타데이터 가져오기
-                try:
-                    metadata = stream_generator.send(None)
-                    notice_refs = metadata.get("notice_refs", [])
-                    notice_details = metadata.get("notice_details", [])
-                except StopIteration as e:
-                    metadata = e.value if hasattr(e, 'value') else {}
-                    notice_refs = metadata.get("notice_refs", [])
-                    notice_details = metadata.get("notice_details", [])
+                # 스트리밍 완료 후 메타데이터 가져오기 (session_state에서)
+                metadata = st.session_state.get("_stream_metadata", {})
+                notice_refs = metadata.get("notice_refs", [])
+                notice_details = metadata.get("notice_details", [])
                 
                 current_session["messages"].append({
                     "role": "assistant",

@@ -178,10 +178,12 @@ class ChatbotEngine:
         
         Yields:
             응답 텍스트 청크들
-            
-        Returns (마지막에):
-            전체 응답과 메타데이터를 포함한 딕셔너리
+        
+        Note:
+            메타데이터는 st.session_state._stream_metadata에 저장됨
         """
+        import streamlit as st
+        
         # 1. 최근 공지 조회
         recent_notices = self._get_recent_notices()
         
@@ -272,14 +274,15 @@ class ChatbotEngine:
             keywords
         )
         
-        # 메타데이터 반환
-        return {
+        # 메타데이터를 session_state에 저장 (st.write_stream 완료 후 접근 가능)
+        st.session_state._stream_metadata = {
             "response": self._clean_response(full_response),
             "response_type": response_type,
             "notice_refs": notice_refs,
             "notice_details": notice_details,
             "keywords": keywords
         }
+
 
     def _get_recent_notices(self, limit: int = 100) -> List[Dict]:
         """
